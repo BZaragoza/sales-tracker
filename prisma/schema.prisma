@@ -21,3 +21,16 @@ model DailyProduction {
   @@unique([variety, date])
   @@index([date])
 }
+
+model CashRegister {
+  id          String   @id @default(cuid())
+  date        DateTime @default(now())
+  expectedAmount Float
+  actualAmount   Float?
+  notes        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([date])
+}
+
