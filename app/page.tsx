@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import Link from 'next/link'
+import toast from 'react-hot-toast'
 
 const VARIETIES = ['Rojo', 'Rajas', 'Verde', 'Prensado', 'Frijoles', 'Dulce']
 
@@ -39,6 +41,7 @@ export default function Home() {
   }
 
   const getQuantityForVariety = (variety: string): number => {
+    console.log([productions])
     const production = productions.find(p => p.variety === variety)
     return production?.quantity || 0
   }
@@ -102,8 +105,8 @@ export default function Home() {
 
   const handleSetTotal = async (variety: string) => {
     const quantity = parseInt(editValue)
-    if (isNaN(quantity) || quantity < 0) {
-      alert('Por favor ingresa un número válido')
+if (isNaN(quantity) || quantity < 0) {
+      toast.error('Por favor ingresa un número válido')
       return
     }
 
@@ -197,9 +200,17 @@ export default function Home() {
     <div className="w-full max-w-full mx-auto px-4 py-4 md:max-w-2xl md:px-6">
       <header className="text-center mb-6">
         <h1 className="text-2xl md:text-3xl font-bold mb-2">Registro de Producción</h1>
-        <p className="text-gray-600">
+        <p className="text-gray-600 mb-4">
           {format(new Date(), "EEEE, d 'de' MMMM", { locale: es })}
         </p>
+        <div className="flex justify-center gap-4">
+          <Link href="/venta" className="btn btn-primary text-sm py-2 px-4">
+            Ir a Ventas →
+          </Link>
+          <Link href="/corte" className="btn btn-secondary text-sm py-2 px-4">
+            Corte
+          </Link>
+        </div>
       </header>
 
       {/* Modal para editar cantidad total */}

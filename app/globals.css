@@ -57,3 +57,34 @@
   }
 }
 
+/* React Hot Toast - mobile friendly styling */
+@media (max-width: 640px) {
+  .HotToast__toast {
+    width: calc(100vw - 1.5rem) !important;
+    max-width: none !important;
+    margin: 0.5rem 0.75rem !important;
+  }
+  
+  .HotToast__toast--content {
+    padding: 0.75rem !important;
+    font-size: 0.8125rem !important;
+  }
+  
+  .HotToast__toast-container {
+    top: 0.75rem !important;
+    left: 0.75rem !important;
+    right: 0.75rem !important;
+  }
+}
+
+/* Ensure proper z-index and mobile behavior */
+.HotToast__toast-container {
+  z-index: 9999;
+}
+
+.HotToast__toast {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: blur(8px) !important;
+}
+

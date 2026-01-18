@@ -41,21 +41,22 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { expectedAmount, actualAmount, notes } = body
+    const { totalProduction, expectedAmount, actualAmount, notes, date } = body
 
-    if (expectedAmount === undefined || actualAmount === undefined) {
+    if (totalProduction === undefined || expectedAmount === undefined || actualAmount === undefined) {
       return NextResponse.json(
-        { error: 'Monto esperado y monto real son requeridos' },
+        { error: 'Producción total, monto esperado y monto real son requeridos' },
         { status: 400 }
       )
     }
 
     const cashRegister = await prisma.cashRegister.create({
       data: {
+        totalProduction: parseInt(totalProduction),
         expectedAmount: parseFloat(expectedAmount),
         actualAmount: parseFloat(actualAmount),
         notes: notes || null,
-        date: new Date()
+        date: date ? new Date(date) : new Date()
       }
     })
 

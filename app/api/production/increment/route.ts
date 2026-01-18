@@ -1,7 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-const VALID_VARIETIES = ['Rojo', 'Rajas', 'Puerco en Verde', 'Prensado', 'Frijoles', 'Dulce']
+const VALID_VARIETIES = ['Rojo', 'Rajas', 'Verde', 'Prensado', 'Frijoles', 'Dulce']
+const COST_PER_PIECE = 22
+
+async function updateCashRegisterExpectedAmount(date: Date) {
+  const startOfDay = new Date(date)
+  startOfDay.setHours(0, 0, 0, 0)
+  const endOfDay = new Date(date)
+  endOfDay.setHours(23, 59, 59, 999)
+
+  // Get all production for the date
+  const productions = await prisma.dailyProduction.findMany({
+    where: {
+      date: {
+        gte: startOfDay,
+        lte: endOfDay
+      }
+    }
+  })
+
+  // Calculate total production and expected amount
+  const totalProduction = productions.reduce((sum, prod) => sum + prod.quantity, 0)
+  const expectedAmount = totalProduction * COST_PER_PIECE
+
+  // Update existing cash register if exists
+  const existingCashRegister = await prisma.cashRegister.findFirst({
+    where: {
+      date: {
+        gte: startOfDay,
+        lte: endOfDay
+      }
+    }
+  })
+
+  if (existingCashRegister) {
+    return await prisma.cashRegister.update({
+      where: { id: existingCashRegister.id },
+      data: {
+        totalProduction,
+        expectedAmount
+      }
+    })
+  }
+
+  return null
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +83,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    let production
+let production
     if (existing) {
       // Incrementar cantidad existente
       const newQuantity = Math.max(0, existing.quantity + parseInt(increment))
@@ -60,6 +104,9 @@ export async function POST(request: NextRequest) {
         }
       })
     }
+
+    // Update cash register expected amount if exists
+    await updateCashRegisterExpectedAmount(productionDate)
 
     return NextResponse.json(production, { status: 200 })
   } catch (error) {

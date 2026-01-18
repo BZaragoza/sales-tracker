@@ -7,11 +7,11 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const { expectedAmount, actualAmount, notes } = body
+    const { totalProduction, expectedAmount, actualAmount, notes } = body
 
-    if (expectedAmount === undefined || actualAmount === undefined) {
+    if (totalProduction === undefined || expectedAmount === undefined || actualAmount === undefined) {
       return NextResponse.json(
-        { error: 'Monto esperado y monto real son requeridos' },
+        { error: 'Producción total, monto esperado y monto real son requeridos' },
         { status: 400 }
       )
     }
@@ -19,6 +19,7 @@ export async function PUT(
     const cashRegister = await prisma.cashRegister.update({
       where: { id: params.id },
       data: {
+        totalProduction: parseInt(totalProduction),
         expectedAmount: parseFloat(expectedAmount),
         actualAmount: parseFloat(actualAmount),
         notes: notes || null
