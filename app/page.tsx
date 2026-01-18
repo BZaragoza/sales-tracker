@@ -41,7 +41,6 @@ export default function Home() {
   }
 
   const getQuantityForVariety = (variety: string): number => {
-    console.log([productions])
     const production = productions.find(p => p.variety === variety)
     return production?.quantity || 0
   }
@@ -105,7 +104,7 @@ export default function Home() {
 
   const handleSetTotal = async (variety: string) => {
     const quantity = parseInt(editValue)
-if (isNaN(quantity) || quantity < 0) {
+    if (isNaN(quantity) || quantity < 0) {
       toast.error('Por favor ingresa un número válido')
       return
     }
