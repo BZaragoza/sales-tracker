@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Link from 'next/link'
@@ -22,22 +22,28 @@ export default function Home() {
   const [incrementValues, setIncrementValues] = useState<Record<string, string>>({})
 
   const today = format(new Date(), 'yyyy-MM-dd')
+  const loadingRef = useRef(false)
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (loadingRef.current) return
+    loadingRef.current = true
     try {
       const response = await fetch(`/api/production?date=${today}`)
       const data = await response.json()
-      setProductions(data)
+      if (Array.isArray(data)) setProductions(data)
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
-  }
+  }, [today])
+
+  useEffect(() => {
+    loadData()
+    const interval = setInterval(loadData, 7000)
+    return () => clearInterval(interval)
+  }, [loadData])
 
   const getQuantityForVariety = (variety: string): number => {
     const production = productions.find(p => p.variety === variety)
@@ -86,10 +92,10 @@ export default function Home() {
       if (response.ok) {
         const updated = await response.json()
         // Actualizar con los datos reales del servidor
-        setProductions(prev => {
-          const filtered = prev.filter(p => p.variety !== variety || !p.id.startsWith('temp-'))
-          return [...filtered, updated]
-        })
+        setProductions(prev => [
+          ...prev.filter(p => p.variety !== variety),
+          updated
+        ])
       } else {
         // Revertir en caso de error
         loadData()
@@ -144,10 +150,10 @@ export default function Home() {
       if (response.ok) {
         const updated = await response.json()
         // Actualizar con los datos reales del servidor
-        setProductions(prev => {
-          const filtered = prev.filter(p => p.variety !== variety || !p.id.startsWith('temp-'))
-          return [...filtered, updated]
-        })
+        setProductions(prev => [
+          ...prev.filter(p => p.variety !== variety),
+          updated
+        ])
       } else {
         // Revertir en caso de error
         loadData()

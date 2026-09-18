@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Link from 'next/link'
@@ -28,12 +28,20 @@ interface Sale {
   items: SaleItem[]
 }
 
+interface VarietyAvailability {
+  variety: string
+  produced: number
+  sold: number
+  remaining: number
+}
+
 const saleItemCount = (sale: Sale) => sale.items.reduce((sum, item) => sum + item.quantity, 0)
 const saleTotal = (sale: Sale) => sale.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
 
 export default function VentaPage() {
   const [sales, setSales] = useState<Sale[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [availability, setAvailability] = useState<VarietyAvailability[]>([])
   const [ticket, setTicket] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -42,35 +50,46 @@ export default function VentaPage() {
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      setLoading(true)
-      const [salesRes, productsRes] = await Promise.all([
+      const [salesRes, productsRes, availabilityRes] = await Promise.all([
         fetch(`/api/sales?date=${today}`),
-        fetch('/api/products')
+        fetch('/api/products'),
+        fetch('/api/availability')
       ])
 
       const salesData = await salesRes.json()
       const productsData = await productsRes.json()
+      const availabilityData = await availabilityRes.json()
 
       setSales(Array.isArray(salesData) ? salesData : [])
       setProducts(Array.isArray(productsData) ? productsData : [])
+      setAvailability(Array.isArray(availabilityData?.items) ? availabilityData.items : [])
     } catch (error) {
       console.error('Error loading data:', error)
       toast.error('Error al cargar los datos')
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [today])
+
+  useEffect(() => {
+    let active = true
+    loadData().finally(() => {
+      if (active) setLoading(false)
+    })
+    const interval = setInterval(loadData, 7000)
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
+  }, [loadData])
 
   const priceFor = (variety: string): number => {
     const product = products.find(p => p.name.toLowerCase() === variety.toLowerCase())
     return product?.price ?? COST_PER_PIECE
   }
+
+  const availabilityFor = (variety: string) =>
+    availability.find(entry => entry.variety === variety)
 
   const ticketItems = VARIETIES.filter(variety => (ticket[variety] ?? 0) > 0).map(variety => ({
     variety,
@@ -81,7 +100,24 @@ export default function VentaPage() {
   const ticketCount = ticketItems.reduce((sum, item) => sum + item.quantity, 0)
   const ticketTotal = ticketItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
 
+  const overLimitItems = ticketItems.filter(item => {
+    const remaining = availabilityFor(item.variety)?.remaining ?? 0
+    return item.quantity > remaining
+  })
+
   const addToTicket = (variety: string) => {
+    const remaining = availabilityFor(variety)?.remaining ?? 0
+    const current = ticket[variety] ?? 0
+
+    if (remaining <= 0) {
+      toast.error(`${variety} está agotado`)
+      return
+    }
+    if (current >= remaining) {
+      toast.error(`Solo quedan ${remaining} piezas disponibles de ${variety}`)
+      return
+    }
+
     setTicket(prev => ({ ...prev, [variety]: (prev[variety] ?? 0) + 1 }))
   }
 
@@ -98,6 +134,10 @@ export default function VentaPage() {
 
   const registerSale = async () => {
     if (ticketCount === 0 || saving || submittingRef.current) return
+    if (overLimitItems.length > 0) {
+      toast.error('Ajusta las cantidades: superan la disponibilidad actual')
+      return
+    }
 
     submittingRef.current = true
     setSaving(true)
@@ -113,6 +153,16 @@ export default function VentaPage() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => null)
+        if (data?.code === 'INSUFFICIENT_STOCK') {
+          const detail = Array.isArray(data.shortages)
+            ? data.shortages
+                .map((shortage: { variety: string; remaining: number }) => `${shortage.variety}: quedan ${shortage.remaining}`)
+                .join(', ')
+            : ''
+          toast.error(detail ? `Sin existencia: ${detail}` : 'Sin existencia suficiente')
+          await loadData()
+          return
+        }
         const detail = data?.code ? ` (${data.code})` : ''
         toast.error(`${data?.error || 'Error al registrar la venta'}${detail}`)
         return
@@ -124,9 +174,9 @@ export default function VentaPage() {
         return
       }
 
-      setSales(prev => [...prev, newSale])
       setTicket({})
       toast.success('Venta registrada exitosamente')
+      await loadData()
     } catch (error) {
       console.error('Error registering sale:', error)
       toast.error('Error al registrar la venta')
@@ -238,10 +288,28 @@ export default function VentaPage() {
           <tbody className="divide-y divide-gray-200">
             {VARIETIES.map(variety => {
               const quantity = ticket[variety] ?? 0
+              const info = availabilityFor(variety)
+              const produced = info?.produced ?? 0
+              const sold = info?.sold ?? 0
+              const remaining = info?.remaining ?? 0
+              const soldOut = remaining <= 0
               return (
-                <tr key={variety} className="hover:bg-gray-50 transition-colors">
+                <tr
+                  key={variety}
+                  className={`transition-colors ${soldOut ? 'bg-red-50/50' : 'hover:bg-gray-50'}`}
+                >
                   <td className="px-3 py-3">
-                    <span className="font-semibold text-gray-900 text-sm md:text-base whitespace-nowrap">{variety}</span>
+                    <div className="flex flex-col">
+                      <span className={`font-semibold text-sm md:text-base whitespace-nowrap ${soldOut ? 'text-gray-400' : 'text-gray-900'}`}>
+                        {variety}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        Producción {produced} · Vendidas {sold} ·{' '}
+                        <span className={soldOut ? 'font-semibold text-red-600' : 'font-semibold text-green-600'}>
+                          {soldOut ? 'Agotado' : `Disponible ${remaining}`}
+                        </span>
+                      </span>
+                    </div>
                   </td>
                   <td className="px-2 py-3">
                     <div className="flex items-center justify-center gap-2">
@@ -259,6 +327,7 @@ export default function VentaPage() {
                         type="button"
                         className="btn btn-success p-1.5 min-w-0 text-lg leading-none"
                         onClick={() => addToTicket(variety)}
+                        disabled={soldOut}
                         aria-label={`Agregar ${variety}`}
                       >
                         +
@@ -292,6 +361,11 @@ export default function VentaPage() {
               <span className="text-lg font-bold">Total a cobrar</span>
               <span className="text-2xl font-bold text-green-600">${ticketTotal.toFixed(2)}</span>
             </div>
+            {overLimitItems.length > 0 && (
+              <p className="text-sm text-red-600 mb-3">
+                La disponibilidad cambió. Ajusta las cantidades antes de registrar la venta.
+              </p>
+            )}
             <div className="flex gap-2">
               <button
                 type="button"
@@ -305,7 +379,7 @@ export default function VentaPage() {
                 type="button"
                 className="btn btn-success flex-1"
                 onClick={registerSale}
-                disabled={saving}
+                disabled={saving || overLimitItems.length > 0}
               >
                 {saving ? 'Registrando...' : 'Registrar venta'}
               </button>

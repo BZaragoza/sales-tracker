@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { dayRange, isValidDateKey, resolveDateKey, startOfDay } from '@/lib/date'
 import { COST_PER_PIECE, VARIETIES } from '@/lib/constants'
+import { getAvailability, SALES_LOCK_KEY } from '@/lib/availability'
 
 function errorResponse(error: unknown, message: string, status = 500) {
   const code =
@@ -38,13 +39,13 @@ function normalizeItems(raw: unknown): IncomingItem[] | null {
   return Array.from(merged, ([variety, quantity]) => ({ variety, quantity }))
 }
 
-async function resolveProducts(varieties: string[]) {
-  const products = await prisma.product.findMany({ where: { name: { in: varieties } } })
+async function resolveProducts(tx: Prisma.TransactionClient, varieties: string[]) {
+  const products = await tx.product.findMany({ where: { name: { in: varieties } } })
   const byName = new Map(products.map((product) => [product.name, product]))
 
   for (const variety of varieties) {
     if (!byName.has(variety)) {
-      const created = await prisma.product.create({
+      const created = await tx.product.create({
         data: { name: variety, price: COST_PER_PIECE }
       })
       byName.set(variety, created)
@@ -52,6 +53,19 @@ async function resolveProducts(varieties: string[]) {
   }
 
   return byName
+}
+
+interface StockShortage {
+  variety: string
+  requested: number
+  remaining: number
+}
+
+class InsufficientStockError extends Error {
+  constructor(readonly shortages: StockShortage[]) {
+    super('Insufficient stock')
+    this.name = 'InsufficientStockError'
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -92,27 +106,61 @@ export async function POST(request: NextRequest) {
 
   try {
     const dateKey = resolveDateKey(typeof body?.date === 'string' ? body.date : undefined)
-    const products = await resolveProducts(items.map((item) => item.variety))
+    const products = await resolveProducts(prisma, items.map((item) => item.variety))
 
-    const sale = await prisma.sale.create({
-      data: {
-        date: startOfDay(dateKey),
-        items: {
-          create: items.map((item) => {
-            const product = products.get(item.variety)!
-            return {
-              productId: product.id,
-              quantity: item.quantity,
-              unitPrice: product.price
-            }
-          })
+    const sale = await prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(${SALES_LOCK_KEY}::bigint)) AS lock`
+
+        const availability = await getAvailability(tx)
+        const remainingByVariety = new Map(
+          availability.map((entry) => [entry.variety, entry.remaining])
+        )
+
+        const shortages: StockShortage[] = items
+          .map((item) => ({
+            variety: item.variety,
+            requested: item.quantity,
+            remaining: Math.max(0, remainingByVariety.get(item.variety) ?? 0)
+          }))
+          .filter((entry) => entry.requested > entry.remaining)
+
+        if (shortages.length > 0) {
+          throw new InsufficientStockError(shortages)
         }
+
+        return tx.sale.create({
+          data: {
+            date: startOfDay(dateKey),
+            items: {
+              create: items.map((item) => {
+                const product = products.get(item.variety)!
+                return {
+                  productId: product.id,
+                  quantity: item.quantity,
+                  unitPrice: product.price
+                }
+              })
+            }
+          },
+          include: { items: { include: { product: true } } }
+        })
       },
-      include: { items: { include: { product: true } } }
-    })
+      { maxWait: 15000, timeout: 15000 }
+    )
 
     return NextResponse.json(sale, { status: 201 })
   } catch (error) {
+    if (error instanceof InsufficientStockError) {
+      return NextResponse.json(
+        {
+          error: 'No hay suficiente producción disponible para completar la venta',
+          code: 'INSUFFICIENT_STOCK',
+          shortages: error.shortages
+        },
+        { status: 409 }
+      )
+    }
     return errorResponse(error, 'Error al registrar la venta')
   }
 }
