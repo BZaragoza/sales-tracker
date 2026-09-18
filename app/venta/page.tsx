@@ -5,8 +5,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-
-const VARIETIES = ['Rojo', 'Rajas', 'Verde', 'Prensado', 'Frijoles', 'Dulce']
+import { VARIETIES } from '@/lib/constants'
 
 interface Product {
   id: string
@@ -47,10 +46,6 @@ export default function VentaPage() {
       const salesData = await salesRes.json()
       const productsData = await productsRes.json()
 
-      console.log(salesData)
-      console.log(productsData)
-
-      console.log(salesData)
       setSales(salesData)
       setProducts(productsData)
     } catch (error) {
@@ -99,7 +94,8 @@ const product = getProductForVariety(variety)
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: product.id,
-          quantity
+          quantity,
+          date: today
         })
       })
 

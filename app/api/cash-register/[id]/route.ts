@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 export async function PUT(
@@ -28,11 +29,10 @@ export async function PUT(
 
     return NextResponse.json(cashRegister)
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return NextResponse.json({ error: 'Corte no encontrado' }, { status: 404 })
+    }
     console.error('Error updating cash register:', error)
-    return NextResponse.json(
-      { error: 'Error al actualizar corte de caja' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error al actualizar corte de caja' }, { status: 500 })
   }
 }
-

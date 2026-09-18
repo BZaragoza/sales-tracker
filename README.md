@@ -1,114 +1,60 @@
 # Sales Tracker - Control de Ventas
 
-Aplicación web para control de ventas diarias de un negocio de comida. Permite registrar productos vendidos durante el día y realizar el corte de caja.
+Aplicación web para control de ventas diarias de un negocio de comida. Registra la producción del día, las ventas por producto y el corte de caja.
 
 ## Características
 
-- 📱 Diseño mobile-first optimizado para teléfonos
-- 📊 Registro de ventas diarias por producto
-- 💰 Cálculo automático de totales
-- 🧾 Corte de caja con comparación de montos esperados vs reales
-- 📦 Gestión de productos (crear, editar, eliminar)
-- 🗄️ Base de datos SQLite (fácil migración a PostgreSQL/MySQL)
+- Diseño mobile-first
+- Registro de producción diaria por variedad (incrementos o total)
+- Registro de ventas por producto
+- Corte de caja con comparación de monto esperado vs. real
+- Cálculo automático del monto esperado (producción × costo por pieza)
 
 ## Tecnologías
 
-- **Next.js 14** con App Router
-- **TypeScript**
-- **Tailwind CSS** para estilos
-- **Prisma ORM** con SQLite
-- **React** con componentes del lado del cliente
+- **Next.js 14** (App Router) + **TypeScript**
+- **Tailwind CSS**
+- **Prisma ORM** sobre **PostgreSQL (Neon)**
+- **Vercel** para hosting
 
-## Instalación
+## Desarrollo local
 
 1. Instalar dependencias:
+
 ```bash
 npm install
 ```
 
-2. Configurar la base de datos:
+2. Copiar `.env.example` a `.env` y completar las credenciales de la base de datos de **desarrollo** (ver `DATABASE_SETUP.md`).
+
+3. Aplicar migraciones y cargar los productos base:
+
 ```bash
-# Crear archivo .env con la URL de la base de datos
-echo 'DATABASE_URL="file:./dev.db"' > .env
-
-# Generar el cliente de Prisma
-npm run db:generate
-
-# Crear la base de datos y tablas
-npm run db:push
+npm run db:deploy
+npm run db:seed
 ```
 
-3. Iniciar el servidor de desarrollo:
+4. Iniciar el servidor:
+
 ```bash
 npm run dev
 ```
 
-4. Abrir [http://localhost:3000](http://localhost:3000) en el navegador
+Abrir [http://localhost:3000](http://localhost:3000).
 
-## Uso
+## Scripts
 
-### Gestión de Productos
+| Script | Descripción |
+| --- | --- |
+| `npm run dev` | Servidor de desarrollo |
+| `npm run build` | Build de producción |
+| `npm run db:migrate` | Crea una migración en desarrollo |
+| `npm run db:deploy` | Aplica migraciones pendientes |
+| `npm run db:seed` | Crea los productos base |
+| `npm run db:studio` | Interfaz visual de la base de datos |
 
-1. Ir a "Gestionar Productos"
-2. Agregar productos con nombre, precio y categoría (opcional)
-3. Editar o eliminar productos según sea necesario
+## Despliegue
 
-### Registrar Ventas
-
-1. En la página principal, seleccionar un producto
-2. Indicar la cantidad vendida
-3. Hacer clic en "Agregar Venta"
-4. Ver el resumen del día en tiempo real
-
-### Corte de Caja
-
-1. Ir a "Corte" desde la página principal
-2. Revisar el resumen de ventas del día
-3. Ingresar el monto real en caja
-4. Agregar notas si es necesario
-5. Guardar el corte (se calculará automáticamente la diferencia)
-
-## Migración de Base de Datos
-
-Para migrar de SQLite a PostgreSQL o MySQL:
-
-1. Cambiar el `provider` en `prisma/schema.prisma`:
-```prisma
-datasource db {
-  provider = "postgresql" // o "mysql"
-  url      = env("DATABASE_URL")
-}
-```
-
-2. Actualizar la variable `DATABASE_URL` en `.env`
-
-3. Ejecutar:
-```bash
-npm run db:push
-```
-
-## Estructura del Proyecto
-
-```
-├── app/
-│   ├── api/              # API routes
-│   ├── productos/        # Página de gestión de productos
-│   ├── corte/            # Página de corte de caja
-│   ├── layout.tsx        # Layout principal
-│   ├── page.tsx          # Página principal (ventas)
-│   └── globals.css       # Estilos globales
-├── lib/
-│   └── prisma.ts         # Cliente de Prisma
-├── prisma/
-│   └── schema.prisma     # Esquema de la base de datos
-└── package.json
-```
-
-## Próximas Mejoras
-
-- [ ] Autenticación de usuarios
-- [ ] Historial de cortes de caja
-- [ ] Reportes y estadísticas
-- [ ] Exportación de datos
-- [ ] Modo offline
-
+El despliegue se hace en Vercel. Las variables `DATABASE_URL` y `DIRECT_URL` de
+producción se configuran en el dashboard de Vercel, no en el repositorio. El
+detalle está en `DATABASE_SETUP.md`.

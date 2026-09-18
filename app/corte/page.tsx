@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import toast from 'react-hot-toast'
+import { COST_PER_PIECE } from '@/lib/constants'
 
 interface DailyProduction {
   id: string
@@ -23,7 +24,6 @@ interface CashRegister {
 }
 
 export default function CortePage() {
-  const COST_PER_PIECE = 22
   const [todayProduction, setTodayProduction] = useState<DailyProduction[]>([])
   const [cashRegister, setCashRegister] = useState<CashRegister | null>(null)
   const [loading, setLoading] = useState(true)

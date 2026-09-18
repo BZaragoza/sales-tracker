@@ -1,50 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { dayRange, isValidDateKey, resolveDateKey, startOfDay } from '@/lib/date'
 
 const VALID_VARIETIES = ['Rojo', 'Rajas', 'Verde', 'Prensado', 'Frijoles', 'Dulce']
 const COST_PER_PIECE = 22
 
-async function updateCashRegisterExpectedAmount(date: Date) {
-  const startOfDay = new Date(date)
-  startOfDay.setHours(0, 0, 0, 0)
-  const endOfDay = new Date(date)
-  endOfDay.setHours(23, 59, 59, 999)
-
-  // Get all production for the date
+async function recalcCashRegister(dateKey: string) {
   const productions = await prisma.dailyProduction.findMany({
-    where: {
-      date: {
-        gte: startOfDay,
-        lte: endOfDay
-      }
-    }
+    where: { date: dayRange(dateKey) }
   })
 
-  // Calculate total production and expected amount
   const totalProduction = productions.reduce((sum, prod) => sum + prod.quantity, 0)
   const expectedAmount = totalProduction * COST_PER_PIECE
 
-  // Update existing cash register if exists
-  const existingCashRegister = await prisma.cashRegister.findFirst({
-    where: {
-      date: {
-        gte: startOfDay,
-        lte: endOfDay
-      }
-    }
+  await prisma.cashRegister.updateMany({
+    where: { date: startOfDay(dateKey) },
+    data: { totalProduction, expectedAmount }
   })
-
-  if (existingCashRegister) {
-    return await prisma.cashRegister.update({
-      where: { id: existingCashRegister.id },
-      data: {
-        totalProduction,
-        expectedAmount
-      }
-    })
-  }
-
-  return null
 }
 
 export async function GET(request: NextRequest) {
@@ -52,26 +24,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const dateParam = searchParams.get('date')
 
-    let where: any = {}
-    
-    if (dateParam) {
-      const date = new Date(dateParam)
-      const startOfDay = new Date(date)
-      startOfDay.setHours(0, 0, 0, 0)
-      const endOfDay = new Date(date)
-      endOfDay.setHours(23, 59, 59, 999)
-      
-      where.date = {
-        gte: startOfDay,
-        lte: endOfDay
-      }
-    }
+    const where = isValidDateKey(dateParam) ? { date: dayRange(dateParam) } : {}
 
     const productions = await prisma.dailyProduction.findMany({
       where,
-      orderBy: [
-        { variety: 'asc' }
-      ]
+      orderBy: [{ variety: 'asc' }]
     })
 
     return NextResponse.json(productions)
@@ -90,58 +47,24 @@ export async function POST(request: NextRequest) {
     const { variety, quantity, date } = body
 
     if (!variety || !VALID_VARIETIES.includes(variety)) {
-      return NextResponse.json(
-        { error: 'Variedad inválida' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Variedad inválida' }, { status: 400 })
     }
 
-    if (quantity === undefined || quantity < 0) {
-      return NextResponse.json(
-        { error: 'Cantidad inválida' },
-        { status: 400 }
-      )
+    const parsedQuantity = Number(quantity)
+    if (!Number.isInteger(parsedQuantity) || parsedQuantity < 0) {
+      return NextResponse.json({ error: 'Cantidad inválida' }, { status: 400 })
     }
 
-    const productionDate = date ? new Date(date) : new Date()
-    const startOfDay = new Date(productionDate)
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(productionDate)
-    endOfDay.setHours(23, 59, 59, 999)
+    const dateKey = resolveDateKey(date)
+    const day = startOfDay(dateKey)
 
-    // Buscar si ya existe un registro para esta variedad y fecha
-    const existing = await prisma.dailyProduction.findFirst({
-      where: {
-        variety,
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      }
+    const production = await prisma.dailyProduction.upsert({
+      where: { variety_date: { variety, date: day } },
+      update: { quantity: parsedQuantity },
+      create: { variety, quantity: parsedQuantity, date: day }
     })
 
-let production
-    if (existing) {
-      // Actualizar cantidad existente
-      production = await prisma.dailyProduction.update({
-        where: { id: existing.id },
-        data: {
-          quantity: parseInt(quantity)
-        }
-      })
-    } else {
-      // Crear nuevo registro
-      production = await prisma.dailyProduction.create({
-        data: {
-          variety,
-          quantity: parseInt(quantity),
-          date: productionDate
-        }
-      })
-    }
-
-    // Update cash register expected amount if exists
-    await updateCashRegisterExpectedAmount(productionDate)
+    await recalcCashRegister(dateKey)
 
     return NextResponse.json(production, { status: 201 })
   } catch (error) {
@@ -152,4 +75,3 @@ let production
     )
   }
 }
-

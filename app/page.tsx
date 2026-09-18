@@ -5,8 +5,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-
-const VARIETIES = ['Rojo', 'Rajas', 'Verde', 'Prensado', 'Frijoles', 'Dulce']
+import { VARIETIES } from '@/lib/constants'
 
 interface DailyProduction {
   id: string

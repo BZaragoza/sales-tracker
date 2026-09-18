@@ -1,31 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isValidDateKey, resolveDateKey, startOfDay } from '@/lib/date'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const dateParam = searchParams.get('date')
 
-    if (!dateParam) {
-      return NextResponse.json(
-        { error: 'Fecha es requerida' },
-        { status: 400 }
-      )
+    if (!isValidDateKey(dateParam)) {
+      return NextResponse.json({ error: 'Fecha es requerida' }, { status: 400 })
     }
 
-    const date = new Date(dateParam)
-    const startOfDay = new Date(date)
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(date)
-    endOfDay.setHours(23, 59, 59, 999)
-
-    const cashRegister = await prisma.cashRegister.findFirst({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      }
+    const cashRegister = await prisma.cashRegister.findUnique({
+      where: { date: startOfDay(dateParam) }
     })
 
     return NextResponse.json(cashRegister)
@@ -50,14 +37,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const cashRegister = await prisma.cashRegister.create({
-      data: {
-        totalProduction: parseInt(totalProduction),
-        expectedAmount: parseFloat(expectedAmount),
-        actualAmount: parseFloat(actualAmount),
-        notes: notes || null,
-        date: date ? new Date(date) : new Date()
-      }
+    const data = {
+      totalProduction: parseInt(totalProduction),
+      expectedAmount: parseFloat(expectedAmount),
+      actualAmount: parseFloat(actualAmount),
+      notes: notes || null
+    }
+
+    const day = startOfDay(resolveDateKey(date))
+
+    const cashRegister = await prisma.cashRegister.upsert({
+      where: { date: day },
+      update: data,
+      create: { ...data, date: day }
     })
 
     return NextResponse.json(cashRegister, { status: 201 })
@@ -69,4 +61,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
