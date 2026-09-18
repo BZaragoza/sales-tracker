@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Link from 'next/link'
@@ -37,6 +37,7 @@ export default function VentaPage() {
   const [ticket, setTicket] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const submittingRef = useRef(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
 
   const today = format(new Date(), 'yyyy-MM-dd')
@@ -96,8 +97,9 @@ export default function VentaPage() {
   }
 
   const registerSale = async () => {
-    if (ticketCount === 0 || saving) return
+    if (ticketCount === 0 || saving || submittingRef.current) return
 
+    submittingRef.current = true
     setSaving(true)
     try {
       const response = await fetch('/api/sales', {
@@ -129,6 +131,7 @@ export default function VentaPage() {
       console.error('Error registering sale:', error)
       toast.error('Error al registrar la venta')
     } finally {
+      submittingRef.current = false
       setSaving(false)
     }
   }

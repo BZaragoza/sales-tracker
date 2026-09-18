@@ -74,18 +74,24 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let body: { items?: unknown; date?: unknown }
   try {
-    const body = await request.json()
-    const items = normalizeItems(body?.items)
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Cuerpo de la solicitud inválido' }, { status: 400 })
+  }
 
-    if (!items) {
-      return NextResponse.json(
-        { error: 'La venta debe incluir al menos una variedad con cantidad válida' },
-        { status: 400 }
-      )
-    }
+  const items = normalizeItems(body?.items)
 
-    const dateKey = resolveDateKey(body?.date)
+  if (!items) {
+    return NextResponse.json(
+      { error: 'La venta debe incluir al menos una variedad con cantidad válida' },
+      { status: 400 }
+    )
+  }
+
+  try {
+    const dateKey = resolveDateKey(typeof body?.date === 'string' ? body.date : undefined)
     const products = await resolveProducts(items.map((item) => item.variety))
 
     const sale = await prisma.sale.create({
