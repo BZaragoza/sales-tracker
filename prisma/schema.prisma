@@ -30,18 +30,29 @@ model Product {
   category    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  dailySales  DailySale[]
+  saleItems   SaleItem[]
 }
 
-model DailySale {
-  id          String   @id @default(cuid())
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  quantity    Int      @default(1)
-  date        DateTime @default(now())
-  createdAt   DateTime @default(now())
-  
+model Sale {
+  id        String     @id @default(cuid())
+  date      DateTime
+  createdAt DateTime   @default(now())
+  items     SaleItem[]
+
   @@index([date])
+  @@index([createdAt])
+}
+
+model SaleItem {
+  id        String  @id @default(cuid())
+  saleId    String
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity  Int     @default(1)
+  unitPrice Float
+
+  @@index([saleId])
   @@index([productId])
 }
 

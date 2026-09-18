@@ -1,6 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { dayRange, isValidDateKey, resolveDateKey, startOfDay } from '@/lib/date'
+import { COST_PER_PIECE, VARIETIES } from '@/lib/constants'
+
+type IncomingItem = { variety: string; quantity: number }
+
+function normalizeItems(raw: unknown): IncomingItem[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null
+
+  const merged = new Map<string, number>()
+  for (const entry of raw) {
+    const variety = entry?.variety
+    const quantity = Number(entry?.quantity)
+    if (typeof variety !== 'string' || !VARIETIES.includes(variety)) return null
+    if (!Number.isInteger(quantity) || quantity < 1) return null
+    merged.set(variety, (merged.get(variety) ?? 0) + quantity)
+  }
+
+  return Array.from(merged, ([variety, quantity]) => ({ variety, quantity }))
+}
+
+async function resolveProducts(varieties: string[]) {
+  const products = await prisma.product.findMany({ where: { name: { in: varieties } } })
+  const byName = new Map(products.map((product) => [product.name, product]))
+
+  for (const variety of varieties) {
+    if (!byName.has(variety)) {
+      const created = await prisma.product.create({
+        data: { name: variety, price: COST_PER_PIECE }
+      })
+      byName.set(variety, created)
+    }
+  }
+
+  return byName
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,10 +43,10 @@ export async function GET(request: NextRequest) {
 
     const where = isValidDateKey(dateParam) ? { date: dayRange(dateParam) } : {}
 
-    const sales = await prisma.dailySale.findMany({
+    const sales = await prisma.sale.findMany({
       where,
-      include: { product: true },
-      orderBy: { createdAt: 'desc' }
+      include: { items: { include: { product: true } } },
+      orderBy: { createdAt: 'asc' }
     })
 
     return NextResponse.json(sales)
@@ -25,33 +59,38 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { productId, quantity, date } = body
+    const items = normalizeItems(body?.items)
 
-    const parsedQuantity = Number(quantity)
-    if (!productId || !Number.isInteger(parsedQuantity) || parsedQuantity < 1) {
+    if (!items) {
       return NextResponse.json(
-        { error: 'Producto y cantidad son requeridos' },
+        { error: 'La venta debe incluir al menos una variedad con cantidad válida' },
         { status: 400 }
       )
     }
 
-    const product = await prisma.product.findUnique({ where: { id: productId } })
-    if (!product) {
-      return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 })
-    }
+    const dateKey = resolveDateKey(body?.date)
+    const products = await resolveProducts(items.map((item) => item.variety))
 
-    const sale = await prisma.dailySale.create({
+    const sale = await prisma.sale.create({
       data: {
-        productId,
-        quantity: parsedQuantity,
-        date: startOfDay(resolveDateKey(date))
+        date: startOfDay(dateKey),
+        items: {
+          create: items.map((item) => {
+            const product = products.get(item.variety)!
+            return {
+              productId: product.id,
+              quantity: item.quantity,
+              unitPrice: product.price
+            }
+          })
+        }
       },
-      include: { product: true }
+      include: { items: { include: { product: true } } }
     })
 
     return NextResponse.json(sale, { status: 201 })
   } catch (error) {
     console.error('Error creating sale:', error)
-    return NextResponse.json({ error: 'Error al crear venta' }, { status: 500 })
+    return NextResponse.json({ error: 'Error al registrar la venta' }, { status: 500 })
   }
 }

@@ -1,3 +1,3 @@
-export const VARIETIES = ['Rojo', 'Rajas', 'Verde', 'Prensado', 'Frijoles', 'Dulce'] as const
+export const VARIETIES: readonly string[] = ['Rojo', 'Rajas', 'Verde', 'Prensado', 'Frijoles', 'Dulce']
 
 export const COST_PER_PIECE = 22
