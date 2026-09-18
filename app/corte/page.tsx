@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { COST_PER_PIECE } from '@/lib/constants'
@@ -23,12 +23,31 @@ interface CashRegister {
   notes: string | null
 }
 
+interface SaleItem {
+  id: string
+  quantity: number
+  unitPrice: number
+  product: { name: string }
+}
+
+interface Sale {
+  id: string
+  date: string
+  createdAt: string
+  items: SaleItem[]
+}
+
+const money = (value: number) => `$${value.toFixed(2)}`
+
 export default function CortePage() {
   const [todayProduction, setTodayProduction] = useState<DailyProduction[]>([])
   const [cashRegister, setCashRegister] = useState<CashRegister | null>(null)
+  const [sales, setSales] = useState<Sale[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [actualAmount, setActualAmount] = useState<string>('')
   const [notes, setNotes] = useState<string>('')
+  const [showProductionDetail, setShowProductionDetail] = useState(false)
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
@@ -39,72 +58,111 @@ export default function CortePage() {
   const loadData = async () => {
     try {
       setLoading(true)
-const [productionRes, registerRes] = await Promise.all([
+      const [productionRes, registerRes, salesRes] = await Promise.all([
         fetch(`/api/production?date=${today}`),
-        fetch(`/api/cash-register?date=${today}`)
+        fetch(`/api/cash-register?date=${today}`),
+        fetch(`/api/sales?date=${today}`)
       ])
-      
+
       const productionData = await productionRes.json()
       const registerData = await registerRes.json()
-      
-      setTodayProduction(productionData)
-      if (registerData) {
+      const salesData = await salesRes.json()
+
+      setTodayProduction(Array.isArray(productionData) ? productionData : [])
+      setSales(Array.isArray(salesData) ? salesData : [])
+
+      if (registerData && registerData.id) {
         setCashRegister(registerData)
-        setActualAmount(registerData.actualAmount?.toString() || '')
-        setNotes(registerData.notes || '')
+        setActualAmount(registerData.actualAmount?.toString() ?? '')
+        setNotes(registerData.notes ?? '')
+      } else {
+        setCashRegister(null)
       }
     } catch (error) {
       console.error('Error loading data:', error)
+      toast.error('Error al cargar los datos del corte')
     } finally {
       setLoading(false)
     }
   }
 
-const handleSaveCorte = async () => {
+  const handleSaveCorte = async () => {
+    if (saving) return
+
+    const parsedActual = parseFloat(actualAmount)
+    if (Number.isNaN(parsedActual) || parsedActual < 0) {
+      toast.error('Ingresa un monto de caja válido')
+      return
+    }
+
     const totalProduction = todayProduction.reduce((sum, prod) => sum + prod.quantity, 0)
     const expectedAmount = totalProduction * COST_PER_PIECE
 
-    const actual = parseFloat(actualAmount) || 0
-
+    setSaving(true)
     try {
-      const url = cashRegister 
-        ? `/api/cash-register/${cashRegister.id}`
-        : '/api/cash-register'
-      
+      const url = cashRegister ? `/api/cash-register/${cashRegister.id}` : '/api/cash-register'
       const method = cashRegister ? 'PUT' : 'POST'
-      
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           totalProduction,
           expectedAmount,
-          actualAmount: actual,
+          actualAmount: parsedActual,
           notes: notes || null,
           date: today
         })
       })
 
-if (response.ok) {
-        const message = cashRegister 
-          ? 'Corte actualizado exitosamente'
-          : 'Corte guardado exitosamente'
-        
-        toast.success(message)
-        loadData()
+      if (!response.ok) {
+        toast.error('Error al guardar el corte')
+        return
       }
+
+      toast.success(cashRegister ? 'Corte actualizado exitosamente' : 'Corte guardado exitosamente')
+      await loadData()
     } catch (error) {
       console.error('Error saving corte:', error)
       toast.error('Error al guardar el corte')
+    } finally {
+      setSaving(false)
     }
   }
 
-const totalProduction = todayProduction.reduce((sum, prod) => sum + prod.quantity, 0)
+  const totalProduction = todayProduction.reduce((sum, prod) => sum + prod.quantity, 0)
   const totalExpected = totalProduction * COST_PER_PIECE
+  const totalItemsSold = sales.reduce(
+    (sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
+    0
+  )
+  const totalSoldAmount = sales.reduce(
+    (sum, sale) =>
+      sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity * item.unitPrice, 0),
+    0
+  )
 
-  const difference = cashRegister?.actualAmount 
-    ? cashRegister.actualAmount - totalExpected
-    : null
+  const reportedAmount = cashRegister?.actualAmount ?? null
+  const difference = reportedAmount !== null ? reportedAmount - totalExpected : null
+  const differenceLabel =
+    difference === null
+      ? 'Sin registrar'
+      : Math.abs(difference) < 0.005
+        ? 'Cuadra'
+        : difference < 0
+          ? 'Faltante'
+          : 'Sobrante'
+  const differenceClasses =
+    difference === null
+      ? 'text-gray-500'
+      : Math.abs(difference) < 0.005
+        ? 'text-green-700'
+        : difference < 0
+          ? 'text-red-700'
+          : 'text-amber-700'
+  const expectedMismatch = cashRegister
+    ? Math.abs(cashRegister.expectedAmount - totalExpected) > 0.01
+    : false
 
   if (loading) {
     return (
@@ -128,137 +186,220 @@ const totalProduction = todayProduction.reduce((sum, prod) => sum + prod.quantit
         </Link>
       </header>
 
-{/* Resumen de producción */}
-      <div className="card mb-4">
-        <h2 className="text-xl font-bold mb-4">Resumen de Producción</h2>
+      {/* Modal detalle de producción */}
+      {showProductionDetail && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowProductionDetail(false)}
+        >
+          <div
+            className="card max-w-md w-full mb-0 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h2 className="text-xl font-bold">Detalle de Producción</h2>
+                <p className="text-gray-600 text-sm">
+                  {format(new Date(), "EEEE, d 'de' MMMM", { locale: es })}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="text-gray-500 hover:text-gray-800 text-2xl leading-none"
+                onClick={() => setShowProductionDetail(false)}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+
+            {todayProduction.length === 0 ? (
+              <p className="text-gray-600 text-center py-4">
+                No hay producción registrada hoy
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {todayProduction.map((prod) => (
+                  <div
+                    key={prod.id}
+                    className="flex justify-between items-center border-b border-gray-100 pb-2 last:border-b-0"
+                  >
+                    <div>
+                      <p className="font-semibold text-gray-900">{prod.variety}</p>
+                      <p className="text-gray-600 text-sm">
+                        {prod.quantity} x {money(COST_PER_PIECE)}
+                      </p>
+                    </div>
+                    <p className="font-bold text-gray-900">
+                      {money(prod.quantity * COST_PER_PIECE)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-between items-center mt-4 pt-3 border-t-2 border-gray-200">
+              <span className="text-lg font-bold">Total producido</span>
+              <span className="text-2xl font-bold text-green-600">{totalProduction}</span>
+            </div>
+            <p className="text-xs text-gray-500 text-right mt-1">
+              Monto esperado: {money(totalExpected)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Resumen de producción (abre el detalle) */}
+      <button
+        type="button"
+        onClick={() => setShowProductionDetail(true)}
+        aria-haspopup="dialog"
+        aria-expanded={showProductionDetail}
+        className="card w-full text-left hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+      >
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h2 className="text-xl font-bold">Resumen de Producción</h2>
+            <p className="text-gray-500 text-sm">Toca para ver el detalle por variedad</p>
+          </div>
+          <span className="text-2xl text-gray-400" aria-hidden="true">
+            ›
+          </span>
+        </div>
         <div className="flex flex-col gap-2">
           <div className="flex justify-between">
             <span className="text-gray-600">Total de items producidos:</span>
-            <span className="font-bold">
-              {totalProduction}
-            </span>
+            <span className="font-bold">{totalProduction}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Costo por pieza:</span>
-            <span className="font-bold">${COST_PER_PIECE.toFixed(2)}</span>
+            <span className="font-bold">{money(COST_PER_PIECE)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Monto esperado:</span>
-            <span className="font-bold text-lg">${totalExpected.toFixed(2)}</span>
+            <span className="font-bold text-lg">{money(totalExpected)}</span>
           </div>
         </div>
-      </div>
+      </button>
 
-      {/* Alerta si los montos esperados no coinciden */}
-      {cashRegister && Math.abs(cashRegister.expectedAmount - totalExpected) > 0.01 && (
-        <div className="card mb-4 bg-yellow-50 border-yellow-200">
-          <h2 className="text-xl font-bold mb-4 text-yellow-800">⚠️ Actualización Requerida</h2>
-          <div className="flex flex-col gap-2">
-            <p className="text-yellow-700 text-sm">
-              La producción ha sido actualizada desde el último corte guardado. 
-              Los montos esperados no coinciden.
-            </p>
-            <div className="flex flex-col gap-1 bg-white p-3 rounded border border-yellow-300">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Monto esperado actual:</span>
-                <span className="font-bold text-green-600">${totalExpected.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Monto esperado guardado:</span>
-                <span className="font-bold text-yellow-600">${cashRegister.expectedAmount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between font-bold">
-                <span className="text-gray-600">Diferencia:</span>
-                <span className={`${(totalExpected - cashRegister.expectedAmount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  ${(totalExpected - cashRegister.expectedAmount).toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Corte guardado previamente */}
-      {cashRegister && (
-        <div className="card mb-4 bg-blue-50 border-blue-200">
-          <h2 className="text-xl font-bold mb-4">Corte Guardado</h2>
-          <div className="flex flex-col gap-2">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Producción registrada:</span>
-              <span className="font-bold">{cashRegister.totalProduction}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Monto esperado guardado:</span>
-              <span className={`font-bold ${Math.abs(cashRegister.expectedAmount - totalExpected) > 0.01 ? 'text-yellow-600' : ''}`}>
-                ${cashRegister.expectedAmount.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Monto real:</span>
-              <span className="font-bold">
-                {cashRegister.actualAmount ? `$${cashRegister.actualAmount.toFixed(2)}` : 'No registrado'}
-              </span>
-            </div>
-            {cashRegister.notes && (
-              <div className="flex flex-col gap-1">
-                <span className="text-gray-600">Notas:</span>
-                <p className="text-sm text-gray-700">{cashRegister.notes}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-{/* Detalle por producción */}
-      <div className="card mb-4">
-        <h2 className="text-xl font-bold mb-4">Detalle por Producción</h2>
-        {todayProduction.length === 0 ? (
-          <p className="text-gray-600 text-center py-4">
-            No hay producción registrada hoy
-          </p>
+      {/* Resumen de ventas */}
+      <div className="card">
+        <h2 className="text-xl font-bold mb-4">Resumen de Ventas</h2>
+        {sales.length === 0 ? (
+          <p className="text-gray-600 text-center py-4">No hay ventas registradas hoy</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {todayProduction.map((prod) => (
-              <div
-                key={prod.id}
-                className="flex justify-between items-center p-3 border-b border-gray-200 last:border-b-0"
-              >
-                <div className="flex-1">
-                  <p className="font-bold text-gray-900">{prod.variety}</p>
-                  <p className="text-gray-600 text-sm">
-                    {prod.quantity} x ${COST_PER_PIECE.toFixed(2)}
-                  </p>
-                </div>
-                <p className="font-bold text-gray-900">
-                  ${(prod.quantity * COST_PER_PIECE).toFixed(2)}
-                </p>
-              </div>
-            ))}
+            <div className="flex justify-between">
+              <span className="text-gray-600">Piezas vendidas:</span>
+              <span className="font-bold">{totalItemsSold}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Monto total vendido:</span>
+              <span className="font-bold text-green-600">{money(totalSoldAmount)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Ventas registradas:</span>
+              <span className="font-bold">{sales.length}</span>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Formulario de corte */}
-      <div className="card mb-4">
-        <h2 className="text-xl font-bold mb-4">Registrar Corte</h2>
+      {/* Resultado del corte */}
+      {cashRegister && (
+        <div className="card">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h2 className="text-xl font-bold">Resultado del Corte</h2>
+              <p className="text-gray-500 text-sm">
+                {format(parseISO(cashRegister.date.slice(0, 10)), "d 'de' MMMM", { locale: es })}
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-3 py-1">
+              Corte guardado
+            </span>
+          </div>
+
+          <div className="flex flex-col divide-y divide-gray-100">
+            <div className="flex justify-between items-center py-3">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Efectivo esperado
+                </p>
+                <p className="text-xs text-gray-400">
+                  {totalProduction} piezas × {money(COST_PER_PIECE)}
+                </p>
+              </div>
+              <span className="text-xl font-bold text-gray-900">{money(totalExpected)}</span>
+            </div>
+
+            <div className="flex justify-between items-center py-3">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Efectivo reportado
+                </p>
+                <p className="text-xs text-gray-400">Monto registrado en caja</p>
+              </div>
+              <span className="text-xl font-bold text-gray-900">
+                {reportedAmount !== null ? money(reportedAmount) : 'No registrado'}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center py-4">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Diferencia
+                </p>
+                <p className={`text-sm font-bold ${differenceClasses}`}>{differenceLabel}</p>
+              </div>
+              <span className={`text-2xl font-bold ${differenceClasses}`}>
+                {difference !== null
+                  ? `${difference > 0 ? '+' : difference < 0 ? '-' : ''}${money(Math.abs(difference))}`
+                  : '—'}
+              </span>
+            </div>
+          </div>
+
+          {expectedMismatch && (
+            <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
+              El corte guardado usó un monto esperado de {money(cashRegister.expectedAmount)} (
+              {cashRegister.totalProduction} piezas). La producción actual es de {totalProduction}{' '}
+              piezas ({money(totalExpected)}).
+            </div>
+          )}
+
+          {cashRegister.notes && (
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                Notas del corte
+              </p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{cashRegister.notes}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Registrar / actualizar corte */}
+      <div className="card">
+        <h2 className="text-xl font-bold mb-4">
+          {cashRegister ? 'Actualizar Corte' : 'Registrar Corte'}
+        </h2>
         <div className="flex flex-col gap-4">
           <div>
-            <label className="block text-gray-600 mb-2 font-medium">
-              Monto en caja (real) *
-            </label>
+            <label className="block text-gray-600 mb-2 font-medium">Monto en caja (real) *</label>
             <input
               type="number"
               step="0.01"
+              inputMode="decimal"
               className="input"
               value={actualAmount}
               onChange={(e) => setActualAmount(e.target.value)}
               placeholder="0.00"
             />
+            <p className="text-xs text-gray-500 mt-1">Efectivo esperado: {money(totalExpected)}</p>
           </div>
           <div>
-            <label className="block text-gray-600 mb-2 font-medium">
-              Notas (opcional)
-            </label>
+            <label className="block text-gray-600 mb-2 font-medium">Notas (opcional)</label>
             <textarea
               className="input resize-y"
               value={notes}
@@ -267,26 +408,15 @@ const totalProduction = todayProduction.reduce((sum, prod) => sum + prod.quantit
               rows={3}
             />
           </div>
-          {difference !== null && (
-            <div className={`p-3 rounded-lg ${difference >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-              <div className="flex justify-between">
-                <span className="font-bold">Diferencia:</span>
-                <span className={`font-bold ${difference >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                  {difference >= 0 ? '+' : ''}${difference.toFixed(2)}
-                </span>
-              </div>
-            </div>
-          )}
           <button
             className="btn btn-success w-full"
             onClick={handleSaveCorte}
-            disabled={!actualAmount}
+            disabled={!actualAmount || saving}
           >
-            Guardar Corte
+            {saving ? 'Guardando...' : cashRegister ? 'Actualizar Corte' : 'Guardar Corte'}
           </button>
         </div>
       </div>
     </div>
   )
 }
-
