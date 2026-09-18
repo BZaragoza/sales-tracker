@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { VARIETIES } from '@/lib/constants'
+import { dayRange } from '@/lib/date'
 
 export const SALES_LOCK_KEY = 727374
 
@@ -17,12 +18,22 @@ interface AvailabilityRow {
 }
 
 export async function getAvailability(
-  db: Prisma.TransactionClient
+  db: Prisma.TransactionClient,
+  dateKey: string
 ): Promise<VarietyAvailability[]> {
+  const { gte, lte } = dayRange(dateKey)
+
   const rows = await db.$queryRaw<AvailabilityRow[]>`
     SELECT p."name" AS variety,
-      COALESCE((SELECT SUM(dp."quantity") FROM "DailyProduction" dp WHERE dp."variety" = p."name"), 0)::int AS produced,
-      COALESCE((SELECT SUM(si."quantity") FROM "SaleItem" si WHERE si."productId" = p."id"), 0)::int AS sold
+      COALESCE((
+        SELECT SUM(dp."quantity") FROM "DailyProduction" dp
+        WHERE dp."variety" = p."name" AND dp."date" >= ${gte}::timestamp AND dp."date" <= ${lte}::timestamp
+      ), 0)::int AS produced,
+      COALESCE((
+        SELECT SUM(si."quantity") FROM "SaleItem" si
+        JOIN "Sale" s ON s."id" = si."saleId"
+        WHERE si."productId" = p."id" AND s."date" >= ${gte}::timestamp AND s."date" <= ${lte}::timestamp
+      ), 0)::int AS sold
     FROM "Product" p
   `
 

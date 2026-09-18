@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { VARIETIES } from '@/lib/constants'
+import { businessTodayKey } from '@/lib/date'
 
 interface DailyProduction {
   id: string
@@ -21,7 +22,7 @@ export default function Home() {
   const [editValue, setEditValue] = useState<string>('')
   const [incrementValues, setIncrementValues] = useState<Record<string, string>>({})
 
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = businessTodayKey()
   const loadingRef = useRef(false)
 
   const loadData = useCallback(async () => {

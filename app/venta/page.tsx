@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { COST_PER_PIECE, VARIETIES } from '@/lib/constants'
+import { businessTodayKey } from '@/lib/date'
 
 interface Product {
   id: string
@@ -48,14 +49,14 @@ export default function VentaPage() {
   const submittingRef = useRef(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
 
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = businessTodayKey()
 
   const loadData = useCallback(async () => {
     try {
       const [salesRes, productsRes, availabilityRes] = await Promise.all([
         fetch(`/api/sales?date=${today}`),
         fetch('/api/products'),
-        fetch('/api/availability')
+        fetch(`/api/availability?date=${today}`)
       ])
 
       const salesData = await salesRes.json()

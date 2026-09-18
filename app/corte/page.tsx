@@ -6,6 +6,7 @@ import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { COST_PER_PIECE } from '@/lib/constants'
+import { businessTodayKey } from '@/lib/date'
 
 interface DailyProduction {
   id: string
@@ -49,7 +50,7 @@ export default function CortePage() {
   const [notes, setNotes] = useState<string>('')
   const [showProductionDetail, setShowProductionDetail] = useState(false)
 
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = businessTodayKey()
 
   useEffect(() => {
     loadData()

@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       async (tx) => {
         await tx.$queryRaw`SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(${SALES_LOCK_KEY}::bigint)) AS lock`
 
-        const availability = await getAvailability(tx)
+        const availability = await getAvailability(tx, dateKey)
         const remainingByVariety = new Map(
           availability.map((entry) => [entry.variety, entry.remaining])
         )
