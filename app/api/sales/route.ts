@@ -1,7 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { dayRange, isValidDateKey, resolveDateKey, startOfDay } from '@/lib/date'
 import { COST_PER_PIECE, VARIETIES } from '@/lib/constants'
+
+function errorResponse(error: unknown, message: string, status = 500) {
+  const code =
+    error instanceof Prisma.PrismaClientKnownRequestError ? error.code : undefined
+  console.error(message, error)
+  return NextResponse.json(
+    {
+      error: message,
+      code,
+      detail:
+        process.env.NODE_ENV !== 'production' && error instanceof Error
+          ? error.message
+          : undefined
+    },
+    { status }
+  )
+}
 
 type IncomingItem = { variety: string; quantity: number }
 
@@ -51,8 +69,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(sales)
   } catch (error) {
-    console.error('Error fetching sales:', error)
-    return NextResponse.json({ error: 'Error al obtener ventas' }, { status: 500 })
+    return errorResponse(error, 'Error al obtener ventas')
   }
 }
 
@@ -90,7 +107,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(sale, { status: 201 })
   } catch (error) {
-    console.error('Error creating sale:', error)
-    return NextResponse.json({ error: 'Error al registrar la venta' }, { status: 500 })
+    return errorResponse(error, 'Error al registrar la venta')
   }
 }

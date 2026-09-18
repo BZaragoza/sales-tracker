@@ -53,8 +53,11 @@ export default function VentaPage() {
         fetch('/api/products')
       ])
 
-      setSales(await salesRes.json())
-      setProducts(await productsRes.json())
+      const salesData = await salesRes.json()
+      const productsData = await productsRes.json()
+
+      setSales(Array.isArray(salesData) ? salesData : [])
+      setProducts(Array.isArray(productsData) ? productsData : [])
     } catch (error) {
       console.error('Error loading data:', error)
       toast.error('Error al cargar los datos')
@@ -107,11 +110,18 @@ export default function VentaPage() {
       })
 
       if (!response.ok) {
-        toast.error('Error al registrar la venta')
+        const data = await response.json().catch(() => null)
+        const detail = data?.code ? ` (${data.code})` : ''
+        toast.error(`${data?.error || 'Error al registrar la venta'}${detail}`)
         return
       }
 
       const newSale: Sale = await response.json()
+      if (!newSale?.id || !Array.isArray(newSale.items)) {
+        toast.error('Respuesta inesperada del servidor')
+        return
+      }
+
       setSales(prev => [...prev, newSale])
       setTicket({})
       toast.success('Venta registrada exitosamente')
