@@ -208,12 +208,15 @@ export default function VentaPage() {
         <p className="text-gray-600 mb-4">
           {format(new Date(), "EEEE, d 'de' MMMM", { locale: es })}
         </p>
-        <div className="flex justify-center gap-4">
+        <div className="flex flex-wrap justify-center gap-3">
           <Link href="/" className="btn btn-secondary text-sm py-2 px-4">
             ← Producción
           </Link>
           <Link href="/corte" className="btn btn-secondary text-sm py-2 px-4">
             Corte →
+          </Link>
+          <Link href="/historial" className="btn btn-secondary text-sm py-2 px-4">
+            Historial
           </Link>
         </div>
       </header>

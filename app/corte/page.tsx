@@ -182,9 +182,14 @@ export default function CortePage() {
         <p className="text-gray-600 mb-4">
           {format(new Date(), "EEEE, d 'de' MMMM", { locale: es })}
         </p>
-        <Link href="/" className="btn btn-secondary">
-          ← Volver
-        </Link>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link href="/" className="btn btn-secondary text-sm py-2 px-4">
+            ← Volver
+          </Link>
+          <Link href="/historial" className="btn btn-secondary text-sm py-2 px-4">
+            Historial
+          </Link>
+        </div>
       </header>
 
       {/* Modal detalle de producción */}
