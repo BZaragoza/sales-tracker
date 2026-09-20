@@ -33,11 +33,17 @@ model Product {
   saleItems   SaleItem[]
 }
 
+enum PaymentMethod {
+  CASH
+  TRANSFER
+}
+
 model Sale {
-  id        String     @id @default(cuid())
-  date      DateTime
-  createdAt DateTime   @default(now())
-  items     SaleItem[]
+  id            String        @id @default(cuid())
+  date          DateTime
+  createdAt     DateTime      @default(now())
+  paymentMethod PaymentMethod @default(CASH)
+  items         SaleItem[]
 
   @@index([date])
   @@index([createdAt])

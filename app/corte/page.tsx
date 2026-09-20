@@ -35,10 +35,14 @@ interface Sale {
   id: string
   date: string
   createdAt: string
+  paymentMethod: 'CASH' | 'TRANSFER'
   items: SaleItem[]
 }
 
 const money = (value: number) => `$${value.toFixed(2)}`
+
+const saleTotal = (sale: Sale) =>
+  sale.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
 
 export default function CortePage() {
   const [todayProduction, setTodayProduction] = useState<DailyProduction[]>([])
@@ -142,6 +146,13 @@ export default function CortePage() {
       sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity * item.unitPrice, 0),
     0
   )
+
+  const cashAmount = sales
+    .filter((sale) => sale.paymentMethod === 'CASH')
+    .reduce((sum, sale) => sum + saleTotal(sale), 0)
+  const transferAmount = sales
+    .filter((sale) => sale.paymentMethod === 'TRANSFER')
+    .reduce((sum, sale) => sum + saleTotal(sale), 0)
 
   const reportedAmount = cashRegister?.actualAmount ?? null
   const difference = reportedAmount !== null ? reportedAmount - totalExpected : null
@@ -300,6 +311,14 @@ export default function CortePage() {
               <span className="font-bold">{totalItemsSold}</span>
             </div>
             <div className="flex justify-between">
+              <span className="text-gray-600">Monto en efectivo:</span>
+              <span className="font-bold">{money(cashAmount)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Monto en transferencia:</span>
+              <span className="font-bold">{money(transferAmount)}</span>
+            </div>
+            <div className="flex justify-between border-t border-gray-100 pt-2">
               <span className="text-gray-600">Monto total vendido:</span>
               <span className="font-bold text-green-600">{money(totalSoldAmount)}</span>
             </div>
@@ -330,7 +349,7 @@ export default function CortePage() {
             <div className="flex justify-between items-center py-3">
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Efectivo esperado
+                  Monto total esperado
                 </p>
                 <p className="text-xs text-gray-400">
                   {totalProduction} piezas × {money(COST_PER_PIECE)}
@@ -342,9 +361,9 @@ export default function CortePage() {
             <div className="flex justify-between items-center py-3">
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Efectivo reportado
+                  Monto reportado
                 </p>
-                <p className="text-xs text-gray-400">Monto registrado en caja</p>
+                <p className="text-xs text-gray-400">Monto registrado en el corte</p>
               </div>
               <span className="text-xl font-bold text-gray-900">
                 {reportedAmount !== null ? money(reportedAmount) : 'No registrado'}
@@ -392,7 +411,7 @@ export default function CortePage() {
         </h2>
         <div className="flex flex-col gap-4">
           <div>
-            <label className="block text-gray-600 mb-2 font-medium">Monto en caja (real) *</label>
+            <label className="block text-gray-600 mb-2 font-medium">Monto reportado (real) *</label>
             <input
               type="number"
               step="0.01"
@@ -402,7 +421,7 @@ export default function CortePage() {
               onChange={(e) => setActualAmount(e.target.value)}
               placeholder="0.00"
             />
-            <p className="text-xs text-gray-500 mt-1">Efectivo esperado: {money(totalExpected)}</p>
+            <p className="text-xs text-gray-500 mt-1">Monto total esperado: {money(totalExpected)}</p>
           </div>
           <div>
             <label className="block text-gray-600 mb-2 font-medium">Notas (opcional)</label>

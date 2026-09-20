@@ -23,6 +23,15 @@ function errorResponse(error: unknown, message: string, status = 500) {
 }
 
 type IncomingItem = { variety: string; quantity: number }
+type IncomingPaymentMethod = 'CASH' | 'TRANSFER'
+
+const PAYMENT_METHODS: readonly IncomingPaymentMethod[] = ['CASH', 'TRANSFER']
+
+function normalizePaymentMethod(raw: unknown): IncomingPaymentMethod {
+  return typeof raw === 'string' && (PAYMENT_METHODS as readonly string[]).includes(raw)
+    ? (raw as IncomingPaymentMethod)
+    : 'CASH'
+}
 
 function normalizeItems(raw: unknown): IncomingItem[] | null {
   if (!Array.isArray(raw) || raw.length === 0) return null
@@ -88,7 +97,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { items?: unknown; date?: unknown }
+  let body: { items?: unknown; date?: unknown; paymentMethod?: unknown }
   try {
     body = await request.json()
   } catch {
@@ -96,6 +105,7 @@ export async function POST(request: NextRequest) {
   }
 
   const items = normalizeItems(body?.items)
+  const paymentMethod = normalizePaymentMethod(body?.paymentMethod)
 
   if (!items) {
     return NextResponse.json(
@@ -132,6 +142,7 @@ export async function POST(request: NextRequest) {
         return tx.sale.create({
           data: {
             date: startOfDay(dateKey),
+            paymentMethod,
             items: {
               create: items.map((item) => {
                 const product = products.get(item.variety)!

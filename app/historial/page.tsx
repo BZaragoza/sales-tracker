@@ -18,6 +18,8 @@ interface HistorySales {
   hasRecord: boolean
   items: number
   amount: number
+  cashAmount: number
+  transferAmount: number
   operations: number
 }
 
@@ -50,6 +52,7 @@ interface Sale {
   id: string
   date: string
   createdAt: string
+  paymentMethod: 'CASH' | 'TRANSFER'
   items: SaleItem[]
 }
 
@@ -199,6 +202,12 @@ export default function HistorialPage() {
   const detailProductionTotal = detailProduction.reduce((sum, row) => sum + row.quantity, 0)
   const detailSoldItems = detailSales.reduce((sum, sale) => sum + saleItemCount(sale), 0)
   const detailSoldAmount = detailSales.reduce((sum, sale) => sum + saleTotal(sale), 0)
+  const detailCashAmount = detailSales
+    .filter((sale) => sale.paymentMethod === 'CASH')
+    .reduce((sum, sale) => sum + saleTotal(sale), 0)
+  const detailTransferAmount = detailSales
+    .filter((sale) => sale.paymentMethod === 'TRANSFER')
+    .reduce((sum, sale) => sum + saleTotal(sale), 0)
   const detailExpected =
     detailCashRegister?.expectedAmount ?? detailProductionTotal * COST_PER_PIECE
   const detailReported = detailCashRegister?.actualAmount ?? null
@@ -317,6 +326,14 @@ export default function HistorialPage() {
                           <span className="font-bold">{detailSoldItems}</span>
                         </div>
                         <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Monto en efectivo</span>
+                          <span className="font-bold">{money(detailCashAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Monto en transferencia</span>
+                          <span className="font-bold">{money(detailTransferAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
                           <span className="text-gray-600">Monto total</span>
                           <span className="font-bold text-green-600">{money(detailSoldAmount)}</span>
                         </div>
@@ -363,11 +380,11 @@ export default function HistorialPage() {
                   ) : (
                     <div className="flex flex-col gap-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Efectivo esperado</span>
+                        <span className="text-gray-600">Monto total esperado</span>
                         <span className="font-bold">{money(detailExpected)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Efectivo reportado</span>
+                        <span className="text-gray-600">Monto reportado</span>
                         <span className="font-bold">
                           {detailReported !== null ? money(detailReported) : 'No registrado'}
                         </span>
@@ -520,6 +537,14 @@ export default function HistorialPage() {
                         <span className="font-bold">{day.sales.items}</span>
                       </div>
                       <div className="flex justify-between">
+                        <span className="text-gray-600 text-sm">Efectivo</span>
+                        <span className="font-bold">{money(day.sales.cashAmount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 text-sm">Transferencia</span>
+                        <span className="font-bold">{money(day.sales.transferAmount)}</span>
+                      </div>
+                      <div className="flex justify-between">
                         <span className="text-gray-600 text-sm">Monto vendido</span>
                         <span className="font-bold text-green-600">{money(day.sales.amount)}</span>
                       </div>
@@ -541,7 +566,7 @@ export default function HistorialPage() {
                   ) : (
                     <>
                       <div className="flex justify-between">
-                        <span className="text-gray-600 text-sm">Efectivo esperado</span>
+                        <span className="text-gray-600 text-sm">Monto total esperado</span>
                         <span className="font-bold">
                           {day.cashRegister.expectedAmount !== null
                             ? money(day.cashRegister.expectedAmount)
@@ -549,7 +574,7 @@ export default function HistorialPage() {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600 text-sm">Efectivo reportado</span>
+                        <span className="text-gray-600 text-sm">Monto reportado</span>
                         <span className="font-bold">
                           {day.cashRegister.actualAmount !== null
                             ? money(day.cashRegister.actualAmount)

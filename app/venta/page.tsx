@@ -26,8 +26,19 @@ interface Sale {
   id: string
   date: string
   createdAt: string
+  paymentMethod: PaymentMethod
   items: SaleItem[]
 }
+
+type PaymentMethod = 'CASH' | 'TRANSFER'
+
+const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
+  { value: 'CASH', label: 'Efectivo' },
+  { value: 'TRANSFER', label: 'Transferencia' }
+]
+
+const paymentMethodLabel = (method: PaymentMethod) =>
+  method === 'TRANSFER' ? 'Transferencia' : 'Efectivo'
 
 interface VarietyAvailability {
   variety: string
@@ -48,6 +59,8 @@ export default function VentaPage() {
   const [saving, setSaving] = useState(false)
   const submittingRef = useRef(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
 
   const today = businessTodayKey()
 
@@ -133,11 +146,11 @@ export default function VentaPage() {
     })
   }
 
-  const registerSale = async () => {
-    if (ticketCount === 0 || saving || submittingRef.current) return
+  const registerSale = async (method: PaymentMethod): Promise<boolean> => {
+    if (ticketCount === 0 || saving || submittingRef.current) return false
     if (overLimitItems.length > 0) {
       toast.error('Ajusta las cantidades: superan la disponibilidad actual')
-      return
+      return false
     }
 
     submittingRef.current = true
@@ -148,6 +161,7 @@ export default function VentaPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           date: today,
+          paymentMethod: method,
           items: ticketItems.map(item => ({ variety: item.variety, quantity: item.quantity }))
         })
       })
@@ -162,29 +176,37 @@ export default function VentaPage() {
             : ''
           toast.error(detail ? `Sin existencia: ${detail}` : 'Sin existencia suficiente')
           await loadData()
-          return
+          return false
         }
         const detail = data?.code ? ` (${data.code})` : ''
         toast.error(`${data?.error || 'Error al registrar la venta'}${detail}`)
-        return
+        return false
       }
 
       const newSale: Sale = await response.json()
       if (!newSale?.id || !Array.isArray(newSale.items)) {
         toast.error('Respuesta inesperada del servidor')
-        return
+        return false
       }
 
       setTicket({})
+      setPaymentMethod('CASH')
       toast.success('Venta registrada exitosamente')
       await loadData()
+      return true
     } catch (error) {
       console.error('Error registering sale:', error)
       toast.error('Error al registrar la venta')
+      return false
     } finally {
       submittingRef.current = false
       setSaving(false)
     }
+  }
+
+  const confirmOrder = async () => {
+    const success = await registerSale(paymentMethod)
+    if (success) setShowConfirm(false)
   }
 
   const totalSold = sales.reduce((sum, sale) => sum + saleItemCount(sale), 0)
@@ -264,9 +286,116 @@ export default function VentaPage() {
               ))}
             </div>
 
-            <div className="flex justify-between items-center mt-4 pt-3 border-t-2 border-gray-200">
+            <div className="flex justify-between items-center mt-4 text-sm">
+              <span className="text-gray-600">Método de pago</span>
+              <span className="font-semibold text-gray-900">
+                {paymentMethodLabel(selectedSale.paymentMethod)}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center mt-3 pt-3 border-t-2 border-gray-200">
               <span className="text-lg font-bold">Total</span>
               <span className="text-2xl font-bold text-green-600">${saleTotal(selectedSale).toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmar orden (vista previa, solo lectura) */}
+      {showConfirm && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowConfirm(false)}
+        >
+          <div
+            className="card max-w-md w-full mb-0 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h2 className="text-xl font-bold">Confirmar orden</h2>
+                <p className="text-gray-600 text-sm">Revisa la comanda antes de registrarla</p>
+              </div>
+              <button
+                type="button"
+                className="text-gray-500 hover:text-gray-800 text-2xl leading-none"
+                onClick={() => setShowConfirm(false)}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {ticketItems.map(item => (
+                <div key={item.variety} className="flex justify-between items-center border-b border-gray-100 pb-2">
+                  <div>
+                    <p className="font-semibold text-gray-900">{item.variety}</p>
+                    <p className="text-gray-600 text-sm">
+                      {item.quantity} × ${item.unitPrice.toFixed(2)}
+                    </p>
+                  </div>
+                  <p className="font-bold text-gray-900">
+                    ${(item.quantity * item.unitPrice).toFixed(2)}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between items-center mt-4 pt-3 border-t-2 border-gray-200">
+              <span className="text-lg font-bold">Total</span>
+              <span className="text-2xl font-bold text-green-600">${ticketTotal.toFixed(2)}</span>
+            </div>
+
+            <div className="mt-5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Método de pago
+              </p>
+              <div className="flex gap-1 rounded-lg bg-gray-100 p-1" role="radiogroup" aria-label="Método de pago">
+                {PAYMENT_METHOD_OPTIONS.map(option => {
+                  const selected = paymentMethod === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      className={`flex-1 rounded-md py-2 text-sm font-semibold transition-colors ${
+                        selected ? 'bg-white text-blue-600 shadow' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                      onClick={() => setPaymentMethod(option.value)}
+                      disabled={saving}
+                    >
+                      {option.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {overLimitItems.length > 0 && (
+              <p className="text-sm text-red-600 mt-4">
+                La disponibilidad cambió. Modifica la orden antes de registrar la venta.
+              </p>
+            )}
+
+            <div className="flex gap-2 mt-5">
+              <button
+                type="button"
+                className="btn btn-secondary flex-1"
+                onClick={() => setShowConfirm(false)}
+                disabled={saving}
+              >
+                Modificar orden
+              </button>
+              <button
+                type="button"
+                className="btn btn-success flex-1"
+                onClick={confirmOrder}
+                disabled={saving || overLimitItems.length > 0}
+              >
+                {saving ? 'Registrando...' : 'Registrar venta'}
+              </button>
             </div>
           </div>
         </div>
@@ -382,10 +511,10 @@ export default function VentaPage() {
               <button
                 type="button"
                 className="btn btn-success flex-1"
-                onClick={registerSale}
-                disabled={saving || overLimitItems.length > 0}
+                onClick={() => setShowConfirm(true)}
+                disabled={overLimitItems.length > 0}
               >
-                {saving ? 'Registrando...' : 'Registrar venta'}
+                Confirmar orden
               </button>
             </div>
           </>

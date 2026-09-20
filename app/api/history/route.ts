@@ -30,6 +30,8 @@ interface DaySummary {
     hasRecord: boolean
     items: number
     amount: number
+    cashAmount: number
+    transferAmount: number
     operations: number
   }
   cashRegister: {
@@ -147,6 +149,21 @@ export async function GET(request: NextRequest) {
         0
       )
 
+      const cashAmount = daySales
+        .filter((sale) => sale.paymentMethod === 'CASH')
+        .reduce(
+          (sum, sale) =>
+            sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity * item.unitPrice, 0),
+          0
+        )
+      const transferAmount = daySales
+        .filter((sale) => sale.paymentMethod === 'TRANSFER')
+        .reduce(
+          (sum, sale) =>
+            sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity * item.unitPrice, 0),
+          0
+        )
+
       const expectedAmount = cashRegister ? cashRegister.expectedAmount : null
       const actualAmount = cashRegister ? cashRegister.actualAmount : null
       const difference =
@@ -181,6 +198,8 @@ export async function GET(request: NextRequest) {
           hasRecord: daySales.length > 0,
           items: totalItems,
           amount: totalAmount,
+          cashAmount,
+          transferAmount,
           operations: daySales.length
         },
         cashRegister: {
