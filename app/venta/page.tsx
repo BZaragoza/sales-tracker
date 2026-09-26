@@ -274,15 +274,15 @@ export default function VentaPage() {
               {selectedSale.items.map(item => (
                 <div key={item.id} className="flex justify-between items-center border-b border-gray-100 pb-2 last:border-b-0">
                   <p className="font-semibold text-gray-900">{item.product.name}</p>
-                  <p className="font-medium text-gray-900">{item.quantity} piezas</p>
+                  <p className="text-lg font-bold text-blue-600">{item.quantity}</p>
                 </div>
               ))}
             </div>
 
             <div className="flex justify-between items-center mt-3 text-sm">
               <span className="text-gray-600">Total de piezas</span>
-              <span className="font-semibold text-gray-900">
-                {saleItemCount(selectedSale)} piezas
+              <span className="text-base font-bold text-blue-600">
+                {saleItemCount(selectedSale)}
               </span>
             </div>
 
@@ -330,14 +330,14 @@ export default function VentaPage() {
               {ticketItems.map(item => (
                 <div key={item.variety} className="flex justify-between items-center border-b border-gray-100 pb-2 last:border-b-0">
                   <p className="font-semibold text-gray-900">{item.variety}</p>
-                  <p className="font-medium text-gray-900">{item.quantity} piezas</p>
+                  <p className="text-lg font-bold text-blue-600">{item.quantity}</p>
                 </div>
               ))}
             </div>
 
             <div className="flex justify-between items-center mt-4 text-sm">
               <span className="text-gray-600">Total de piezas</span>
-              <span className="font-bold">{ticketCount} piezas</span>
+              <span className="text-base font-bold text-blue-600">{ticketCount}</span>
             </div>
 
             <div className="flex justify-between items-center mt-3 pt-3 border-t-2 border-gray-200">
@@ -482,13 +482,13 @@ export default function VentaPage() {
               {ticketItems.map(item => (
                 <div key={item.variety} className="flex justify-between text-sm">
                   <span className="text-gray-600">{item.variety}</span>
-                  <span className="font-medium text-gray-900">{item.quantity} piezas</span>
+                  <span className="text-base font-bold text-blue-600">{item.quantity}</span>
                 </div>
               ))}
             </div>
             <div className="flex justify-between items-center border-t border-gray-200 pt-3 mb-4">
               <span className="text-lg font-bold">Total de piezas</span>
-              <span className="text-lg font-bold text-blue-600">{ticketCount} piezas</span>
+              <span className="text-lg font-bold text-blue-600">{ticketCount}</span>
             </div>
             <div className="flex justify-between items-center border-t border-gray-200 pt-3 mb-4">
               <span className="text-lg font-bold">Total a cobrar</span>
@@ -560,14 +560,16 @@ export default function VentaPage() {
                   {sale.items.map(item => (
                     <div key={item.id} className="flex justify-between text-sm">
                       <span className="text-gray-600">{item.product.name}</span>
-                      <span className="font-medium text-gray-900">{item.quantity} piezas</span>
+                      <span className="text-base font-bold text-blue-600">{item.quantity}</span>
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between items-center border-t border-gray-100 pt-2">
-                  <span className="text-sm text-gray-600">
-                    {saleItemCount(sale)} pieza{saleItemCount(sale) === 1 ? '' : 's'}
-                  </span>
+                <div className="flex justify-between items-center border-t border-gray-100 pt-2 text-sm">
+                  <span className="text-gray-600">Total de piezas</span>
+                  <span className="text-base font-bold text-blue-600">{saleItemCount(sale)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Total</span>
                   <span className="font-bold text-green-600">${saleTotal(sale).toFixed(2)}</span>
                 </div>
               </button>

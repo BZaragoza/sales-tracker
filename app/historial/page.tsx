@@ -293,13 +293,13 @@ export default function HistorialPage() {
                           className="flex justify-between items-center border-b border-gray-100 pb-2 last:border-b-0"
                         >
                           <p className="font-semibold text-gray-900">{prod.variety}</p>
-                          <p className="font-medium text-gray-900">{prod.quantity} piezas</p>
+                          <p className="text-lg font-bold text-blue-600">{prod.quantity}</p>
                         </div>
                       ))}
                       <div className="flex justify-between items-center pt-2">
                         <span className="font-bold">Total producido</span>
-                        <span className="text-xl font-bold text-green-600">
-                          {detailProductionTotal} piezas
+                        <span className="text-xl font-bold text-blue-600">
+                          {detailProductionTotal}
                         </span>
                       </div>
                     </div>
@@ -325,18 +325,22 @@ export default function HistorialPage() {
                             {sale.items.map((item) => (
                               <div key={item.id} className="flex justify-between text-sm">
                                 <span className="text-gray-600">{item.product.name}</span>
-                                <span className="font-medium text-gray-900">
-                                  {item.quantity} piezas
+                                <span className="text-base font-bold text-blue-600">
+                                  {item.quantity}
                                 </span>
                               </div>
                             ))}
+                          </div>
+                          <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
+                            <span className="text-sm font-semibold text-gray-700">Total</span>
+                            <span className="font-bold text-green-600">{money(saleTotal(sale))}</span>
                           </div>
                         </div>
                       ))}
                       <div className="flex flex-col gap-1 border-t border-gray-200 pt-3">
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600">Total de piezas</span>
-                          <span className="font-bold">{detailSoldItems} piezas</span>
+                          <span className="font-bold">{detailSoldItems}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600">Monto en efectivo</span>
