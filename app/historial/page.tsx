@@ -292,21 +292,14 @@ export default function HistorialPage() {
                           key={prod.id}
                           className="flex justify-between items-center border-b border-gray-100 pb-2 last:border-b-0"
                         >
-                          <div>
-                            <p className="font-semibold text-gray-900">{prod.variety}</p>
-                            <p className="text-gray-600 text-sm">
-                              {prod.quantity} x {money(COST_PER_PIECE)}
-                            </p>
-                          </div>
-                          <p className="font-bold text-gray-900">
-                            {money(prod.quantity * COST_PER_PIECE)}
-                          </p>
+                          <p className="font-semibold text-gray-900">{prod.variety}</p>
+                          <p className="font-medium text-gray-900">{prod.quantity} piezas</p>
                         </div>
                       ))}
                       <div className="flex justify-between items-center pt-2">
                         <span className="font-bold">Total producido</span>
                         <span className="text-xl font-bold text-green-600">
-                          {detailProductionTotal}
+                          {detailProductionTotal} piezas
                         </span>
                       </div>
                     </div>
@@ -320,28 +313,6 @@ export default function HistorialPage() {
                     <p className="text-gray-500 text-sm">Sin ventas registradas</p>
                   ) : (
                     <div className="flex flex-col gap-3">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Piezas vendidas</span>
-                          <span className="font-bold">{detailSoldItems}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Monto en efectivo</span>
-                          <span className="font-bold">{money(detailCashAmount)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Monto en transferencia</span>
-                          <span className="font-bold">{money(detailTransferAmount)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Monto total</span>
-                          <span className="font-bold text-green-600">{money(detailSoldAmount)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Ventas registradas</span>
-                          <span className="font-bold">{detailSales.length}</span>
-                        </div>
-                      </div>
                       {detailSales.map((sale, index) => (
                         <div key={sale.id} className="rounded-lg border border-gray-100 p-3">
                           <div className="flex justify-between items-center mb-2">
@@ -353,21 +324,37 @@ export default function HistorialPage() {
                           <div className="flex flex-col gap-1">
                             {sale.items.map((item) => (
                               <div key={item.id} className="flex justify-between text-sm">
-                                <span className="text-gray-600">
-                                  {item.product.name} <span className="text-gray-400">x{item.quantity}</span>
-                                </span>
-                                <span className="font-medium">
-                                  {money(item.quantity * item.unitPrice)}
+                                <span className="text-gray-600">{item.product.name}</span>
+                                <span className="font-medium text-gray-900">
+                                  {item.quantity} piezas
                                 </span>
                               </div>
                             ))}
                           </div>
-                          <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
-                            <span className="text-sm font-semibold text-gray-700">Total</span>
-                            <span className="font-bold text-green-600">{money(saleTotal(sale))}</span>
-                          </div>
                         </div>
                       ))}
+                      <div className="flex flex-col gap-1 border-t border-gray-200 pt-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Total de piezas</span>
+                          <span className="font-bold">{detailSoldItems} piezas</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Monto en efectivo</span>
+                          <span className="font-bold">{money(detailCashAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Monto en transferencia</span>
+                          <span className="font-bold">{money(detailTransferAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Total vendido</span>
+                          <span className="font-bold text-green-600">{money(detailSoldAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Ventas registradas</span>
+                          <span className="font-bold">{detailSales.length}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </section>

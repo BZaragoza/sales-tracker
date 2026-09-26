@@ -272,21 +272,21 @@ export default function VentaPage() {
 
             <div className="flex flex-col gap-2">
               {selectedSale.items.map(item => (
-                <div key={item.id} className="flex justify-between items-center border-b border-gray-100 pb-2">
-                  <div>
-                    <p className="font-semibold text-gray-900">{item.product.name}</p>
-                    <p className="text-gray-600 text-sm">
-                      {item.quantity} x ${item.unitPrice.toFixed(2)}
-                    </p>
-                  </div>
-                  <p className="font-bold text-gray-900">
-                    ${(item.quantity * item.unitPrice).toFixed(2)}
-                  </p>
+                <div key={item.id} className="flex justify-between items-center border-b border-gray-100 pb-2 last:border-b-0">
+                  <p className="font-semibold text-gray-900">{item.product.name}</p>
+                  <p className="font-medium text-gray-900">{item.quantity} piezas</p>
                 </div>
               ))}
             </div>
 
-            <div className="flex justify-between items-center mt-4 text-sm">
+            <div className="flex justify-between items-center mt-3 text-sm">
+              <span className="text-gray-600">Total de piezas</span>
+              <span className="font-semibold text-gray-900">
+                {saleItemCount(selectedSale)} piezas
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center mt-3 text-sm">
               <span className="text-gray-600">Método de pago</span>
               <span className="font-semibold text-gray-900">
                 {paymentMethodLabel(selectedSale.paymentMethod)}
@@ -328,22 +328,20 @@ export default function VentaPage() {
 
             <div className="flex flex-col gap-2">
               {ticketItems.map(item => (
-                <div key={item.variety} className="flex justify-between items-center border-b border-gray-100 pb-2">
-                  <div>
-                    <p className="font-semibold text-gray-900">{item.variety}</p>
-                    <p className="text-gray-600 text-sm">
-                      {item.quantity} × ${item.unitPrice.toFixed(2)}
-                    </p>
-                  </div>
-                  <p className="font-bold text-gray-900">
-                    ${(item.quantity * item.unitPrice).toFixed(2)}
-                  </p>
+                <div key={item.variety} className="flex justify-between items-center border-b border-gray-100 pb-2 last:border-b-0">
+                  <p className="font-semibold text-gray-900">{item.variety}</p>
+                  <p className="font-medium text-gray-900">{item.quantity} piezas</p>
                 </div>
               ))}
             </div>
 
-            <div className="flex justify-between items-center mt-4 pt-3 border-t-2 border-gray-200">
-              <span className="text-lg font-bold">Total</span>
+            <div className="flex justify-between items-center mt-4 text-sm">
+              <span className="text-gray-600">Total de piezas</span>
+              <span className="font-bold">{ticketCount} piezas</span>
+            </div>
+
+            <div className="flex justify-between items-center mt-3 pt-3 border-t-2 border-gray-200">
+              <span className="text-lg font-bold">Total a pagar</span>
               <span className="text-2xl font-bold text-green-600">${ticketTotal.toFixed(2)}</span>
             </div>
 
@@ -483,12 +481,14 @@ export default function VentaPage() {
             <div className="flex flex-col gap-2 mb-4">
               {ticketItems.map(item => (
                 <div key={item.variety} className="flex justify-between text-sm">
-                  <span className="text-gray-600">
-                    {item.variety} <span className="text-gray-400">x{item.quantity}</span>
-                  </span>
-                  <span className="font-medium">${(item.quantity * item.unitPrice).toFixed(2)}</span>
+                  <span className="text-gray-600">{item.variety}</span>
+                  <span className="font-medium text-gray-900">{item.quantity} piezas</span>
                 </div>
               ))}
+            </div>
+            <div className="flex justify-between items-center border-t border-gray-200 pt-3 mb-4">
+              <span className="text-lg font-bold">Total de piezas</span>
+              <span className="text-lg font-bold text-blue-600">{ticketCount} piezas</span>
             </div>
             <div className="flex justify-between items-center border-t border-gray-200 pt-3 mb-4">
               <span className="text-lg font-bold">Total a cobrar</span>
@@ -548,15 +548,28 @@ export default function VentaPage() {
                 key={sale.id}
                 type="button"
                 onClick={() => setSelectedSale(sale)}
-                className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0 text-left hover:bg-gray-50 transition-colors"
+                className="flex flex-col gap-2 py-3 border-b border-gray-100 last:border-b-0 text-left hover:bg-gray-50 transition-colors"
               >
-                <div>
+                <div className="flex justify-between items-center">
                   <p className="font-semibold text-gray-900">Venta #{index + 1}</p>
-                  <p className="text-gray-600 text-sm">
-                    {format(new Date(sale.createdAt), 'HH:mm')} · {saleItemCount(sale)} artículo{saleItemCount(sale) === 1 ? '' : 's'}
-                  </p>
+                  <span className="text-gray-500 text-sm">
+                    {format(new Date(sale.createdAt), 'HH:mm')}
+                  </span>
                 </div>
-                <span className="font-bold text-green-600">${saleTotal(sale).toFixed(2)}</span>
+                <div className="flex flex-col gap-1">
+                  {sale.items.map(item => (
+                    <div key={item.id} className="flex justify-between text-sm">
+                      <span className="text-gray-600">{item.product.name}</span>
+                      <span className="font-medium text-gray-900">{item.quantity} piezas</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between items-center border-t border-gray-100 pt-2">
+                  <span className="text-sm text-gray-600">
+                    {saleItemCount(sale)} pieza{saleItemCount(sale) === 1 ? '' : 's'}
+                  </span>
+                  <span className="font-bold text-green-600">${saleTotal(sale).toFixed(2)}</span>
+                </div>
               </button>
             ))}
           </div>
