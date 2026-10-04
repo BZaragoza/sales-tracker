@@ -6,6 +6,7 @@ import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { COST_PER_PIECE } from '@/lib/constants'
+import { saleBreakdown } from '@/lib/saleMath'
 
 interface HistoryProduction {
   hasRecord: boolean
@@ -21,6 +22,8 @@ interface HistorySales {
   cashAmount: number
   transferAmount: number
   operations: number
+  orderOperations: number
+  orderAmount: number
 }
 
 interface HistoryCashRegister {
@@ -53,6 +56,10 @@ interface Sale {
   date: string
   createdAt: string
   paymentMethod: 'CASH' | 'TRANSFER'
+  depositAmount: number
+  depositPaymentMethod: 'CASH' | 'TRANSFER' | null
+  orderId: string | null
+  order: { id: string; customerName: string; status: string } | null
   items: SaleItem[]
 }
 
@@ -202,12 +209,14 @@ export default function HistorialPage() {
   const detailProductionTotal = detailProduction.reduce((sum, row) => sum + row.quantity, 0)
   const detailSoldItems = detailSales.reduce((sum, sale) => sum + saleItemCount(sale), 0)
   const detailSoldAmount = detailSales.reduce((sum, sale) => sum + saleTotal(sale), 0)
-  const detailCashAmount = detailSales
-    .filter((sale) => sale.paymentMethod === 'CASH')
-    .reduce((sum, sale) => sum + saleTotal(sale), 0)
-  const detailTransferAmount = detailSales
-    .filter((sale) => sale.paymentMethod === 'TRANSFER')
-    .reduce((sum, sale) => sum + saleTotal(sale), 0)
+  const detailCashAmount = detailSales.reduce(
+    (sum, sale) => sum + saleBreakdown(sale).cash,
+    0
+  )
+  const detailTransferAmount = detailSales.reduce(
+    (sum, sale) => sum + saleBreakdown(sale).transfer,
+    0
+  )
   const detailExpected =
     detailCashRegister?.expectedAmount ?? detailProductionTotal * COST_PER_PIECE
   const detailReported = detailCashRegister?.actualAmount ?? null
@@ -245,6 +254,9 @@ export default function HistorialPage() {
           </Link>
           <Link href="/corte" className="btn btn-secondary text-sm py-2 px-4">
             Corte
+          </Link>
+          <Link href="/pedidos" className="btn btn-secondary text-sm py-2 px-4">
+            Pedidos
           </Link>
         </div>
       </header>
@@ -316,7 +328,14 @@ export default function HistorialPage() {
                       {detailSales.map((sale, index) => (
                         <div key={sale.id} className="rounded-lg border border-gray-100 p-3">
                           <div className="flex justify-between items-center mb-2">
-                            <p className="font-semibold text-gray-900">Venta #{index + 1}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-gray-900">Venta #{index + 1}</p>
+                              {sale.orderId && (
+                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                                  Pedido
+                                </span>
+                              )}
+                            </div>
                             <span className="text-sm text-gray-500">
                               {format(parseISO(sale.createdAt), 'HH:mm')}
                             </span>
@@ -543,6 +562,14 @@ export default function HistorialPage() {
                         <span className="text-gray-600 text-sm">Ventas registradas</span>
                         <span className="font-bold">{day.sales.operations}</span>
                       </div>
+                      {day.sales.orderOperations > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 text-sm">De pedidos</span>
+                          <span className="font-bold">
+                            {day.sales.orderOperations} · {money(day.sales.orderAmount)}
+                          </span>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

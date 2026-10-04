@@ -7,6 +7,7 @@ import { es } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import { COST_PER_PIECE } from '@/lib/constants'
 import { businessTodayKey } from '@/lib/date'
+import { saleBreakdown } from '@/lib/saleMath'
 
 interface DailyProduction {
   id: string
@@ -36,6 +37,9 @@ interface Sale {
   date: string
   createdAt: string
   paymentMethod: 'CASH' | 'TRANSFER'
+  depositAmount: number
+  depositPaymentMethod: 'CASH' | 'TRANSFER' | null
+  orderId: string | null
   items: SaleItem[]
 }
 
@@ -147,12 +151,8 @@ export default function CortePage() {
     0
   )
 
-  const cashAmount = sales
-    .filter((sale) => sale.paymentMethod === 'CASH')
-    .reduce((sum, sale) => sum + saleTotal(sale), 0)
-  const transferAmount = sales
-    .filter((sale) => sale.paymentMethod === 'TRANSFER')
-    .reduce((sum, sale) => sum + saleTotal(sale), 0)
+  const cashAmount = sales.reduce((sum, sale) => sum + saleBreakdown(sale).cash, 0)
+  const transferAmount = sales.reduce((sum, sale) => sum + saleBreakdown(sale).transfer, 0)
 
   const reportedAmount = cashRegister?.actualAmount ?? null
   const difference = reportedAmount !== null ? reportedAmount - totalExpected : null
@@ -199,6 +199,9 @@ export default function CortePage() {
           </Link>
           <Link href="/historial" className="btn btn-secondary text-sm py-2 px-4">
             Historial
+          </Link>
+          <Link href="/pedidos" className="btn btn-secondary text-sm py-2 px-4">
+            Pedidos
           </Link>
         </div>
       </header>

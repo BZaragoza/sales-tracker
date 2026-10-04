@@ -218,6 +218,9 @@ export default function Home() {
           <Link href="/historial" className="btn btn-secondary text-sm py-2 px-4">
             Historial
           </Link>
+          <Link href="/pedidos" className="btn btn-secondary text-sm py-2 px-4">
+            Pedidos
+          </Link>
         </div>
       </header>
 

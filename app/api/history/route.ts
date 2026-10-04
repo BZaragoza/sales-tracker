@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { COST_PER_PIECE } from '@/lib/constants'
 import { isValidDateKey, startOfDay, endOfDay } from '@/lib/date'
+import { saleBreakdown } from '@/lib/saleMath'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -33,6 +34,8 @@ interface DaySummary {
     cashAmount: number
     transferAmount: number
     operations: number
+    orderOperations: number
+    orderAmount: number
   }
   cashRegister: {
     hasRecord: boolean
@@ -149,20 +152,15 @@ export async function GET(request: NextRequest) {
         0
       )
 
-      const cashAmount = daySales
-        .filter((sale) => sale.paymentMethod === 'CASH')
-        .reduce(
-          (sum, sale) =>
-            sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity * item.unitPrice, 0),
-          0
-        )
-      const transferAmount = daySales
-        .filter((sale) => sale.paymentMethod === 'TRANSFER')
-        .reduce(
-          (sum, sale) =>
-            sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity * item.unitPrice, 0),
-          0
-        )
+      const cashAmount = daySales.reduce((sum, sale) => sum + saleBreakdown(sale).cash, 0)
+      const transferAmount = daySales.reduce((sum, sale) => sum + saleBreakdown(sale).transfer, 0)
+
+      const orderSales = daySales.filter((sale) => sale.orderId !== null)
+      const orderAmount = orderSales.reduce(
+        (sum, sale) =>
+          sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity * item.unitPrice, 0),
+        0
+      )
 
       const expectedAmount = cashRegister ? cashRegister.expectedAmount : null
       const actualAmount = cashRegister ? cashRegister.actualAmount : null
@@ -200,7 +198,9 @@ export async function GET(request: NextRequest) {
           amount: totalAmount,
           cashAmount,
           transferAmount,
-          operations: daySales.length
+          operations: daySales.length,
+          orderOperations: orderSales.length,
+          orderAmount
         },
         cashRegister: {
           hasRecord: !!cashRegister,

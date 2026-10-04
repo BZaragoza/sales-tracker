@@ -27,7 +27,16 @@ interface Sale {
   date: string
   createdAt: string
   paymentMethod: PaymentMethod
+  depositAmount: number
+  depositPaymentMethod: PaymentMethod | null
+  orderId: string | null
+  order: { id: string; customerName: string; status: string } | null
   items: SaleItem[]
+}
+
+interface Order {
+  id: string
+  status: 'PENDING' | 'FULFILLED' | 'COMPLETED' | 'CANCELLED'
 }
 
 type PaymentMethod = 'CASH' | 'TRANSFER'
@@ -44,6 +53,7 @@ interface VarietyAvailability {
   variety: string
   produced: number
   sold: number
+  reserved: number
   remaining: number
 }
 
@@ -54,6 +64,7 @@ export default function VentaPage() {
   const [sales, setSales] = useState<Sale[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [availability, setAvailability] = useState<VarietyAvailability[]>([])
+  const [pendingOrders, setPendingOrders] = useState(0)
   const [ticket, setTicket] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -66,19 +77,26 @@ export default function VentaPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [salesRes, productsRes, availabilityRes] = await Promise.all([
+      const [salesRes, productsRes, availabilityRes, ordersRes] = await Promise.all([
         fetch(`/api/sales?date=${today}`),
         fetch('/api/products'),
-        fetch(`/api/availability?date=${today}`)
+        fetch(`/api/availability?date=${today}`),
+        fetch(`/api/orders?date=${today}`)
       ])
 
       const salesData = await salesRes.json()
       const productsData = await productsRes.json()
       const availabilityData = await availabilityRes.json()
+      const ordersData = await ordersRes.json()
 
       setSales(Array.isArray(salesData) ? salesData : [])
       setProducts(Array.isArray(productsData) ? productsData : [])
       setAvailability(Array.isArray(availabilityData?.items) ? availabilityData.items : [])
+      setPendingOrders(
+        Array.isArray(ordersData)
+          ? ordersData.filter((order: Order) => order.status === 'PENDING').length
+          : 0
+      )
     } catch (error) {
       console.error('Error loading data:', error)
       toast.error('Error al cargar los datos')
@@ -240,8 +258,29 @@ export default function VentaPage() {
           <Link href="/historial" className="btn btn-secondary text-sm py-2 px-4">
             Historial
           </Link>
+          <Link href="/pedidos" className="btn btn-secondary text-sm py-2 px-4">
+            Pedidos
+          </Link>
         </div>
       </header>
+
+      {/* Recordatorio de pedidos pendientes de surtir */}
+      {pendingOrders > 0 && (
+        <Link
+          href="/pedidos"
+          className="card mb-4 flex items-center justify-between gap-3 border border-amber-200 bg-amber-50 transition-shadow hover:shadow-lg"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xl" aria-hidden="true">⚠️</span>
+            <span className="font-semibold text-amber-900">
+              Pedidos pendientes de surtir: {pendingOrders}
+            </span>
+          </div>
+          <span className="btn btn-primary text-sm py-2 px-4 pointer-events-none">
+            Revisar pedidos
+          </span>
+        </Link>
+      )}
 
       {/* Modal detalle de venta */}
       {selectedSale && (
@@ -255,7 +294,14 @@ export default function VentaPage() {
           >
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h2 className="text-xl font-bold">Venta #{selectedSaleNumber}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold">Venta #{selectedSaleNumber}</h2>
+                  {selectedSale.orderId && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                      Pedido
+                    </span>
+                  )}
+                </div>
                 <p className="text-gray-600 text-sm">
                   {format(new Date(selectedSale.createdAt), "d 'de' MMMM, HH:mm", { locale: es })}
                 </p>
@@ -551,7 +597,14 @@ export default function VentaPage() {
                 className="flex flex-col gap-2 py-3 border-b border-gray-100 last:border-b-0 text-left hover:bg-gray-50 transition-colors"
               >
                 <div className="flex justify-between items-center">
-                  <p className="font-semibold text-gray-900">Venta #{index + 1}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900">Venta #{index + 1}</p>
+                    {sale.orderId && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                        Pedido
+                      </span>
+                    )}
+                  </div>
                   <span className="text-gray-500 text-sm">
                     {format(new Date(sale.createdAt), 'HH:mm')}
                   </span>

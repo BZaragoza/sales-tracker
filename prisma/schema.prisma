@@ -31,6 +31,7 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   saleItems   SaleItem[]
+  orderItems  OrderItem[]
 }
 
 enum PaymentMethod {
@@ -38,12 +39,59 @@ enum PaymentMethod {
   TRANSFER
 }
 
+enum OrderStatus {
+  PENDING
+  FULFILLED
+  COMPLETED
+  CANCELLED
+}
+
+model Order {
+  id                   String         @id @default(cuid())
+  customerName         String
+  customerPhone        String?
+  date                 DateTime
+  status               OrderStatus    @default(PENDING)
+  total                Float
+  depositAmount        Float          @default(0)
+  depositPaymentMethod PaymentMethod?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  fulfilledAt          DateTime?
+  completedAt          DateTime?
+  cancelledAt          DateTime?
+  items                OrderItem[]
+  sale                 Sale?
+
+  @@index([date])
+  @@index([status])
+  @@index([date, status])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity  Int     @default(1)
+  unitPrice Float
+  subtotal  Float
+
+  @@index([orderId])
+  @@index([productId])
+}
+
 model Sale {
-  id            String        @id @default(cuid())
-  date          DateTime
-  createdAt     DateTime      @default(now())
-  paymentMethod PaymentMethod @default(CASH)
-  items         SaleItem[]
+  id                   String         @id @default(cuid())
+  date                 DateTime
+  createdAt            DateTime       @default(now())
+  paymentMethod        PaymentMethod  @default(CASH)
+  depositAmount        Float          @default(0)
+  depositPaymentMethod PaymentMethod?
+  orderId              String?        @unique
+  order                Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  items                SaleItem[]
 
   @@index([date])
   @@index([createdAt])
