@@ -42,14 +42,6 @@ interface Order {
   sale: { id: string; createdAt: string } | null
 }
 
-interface VarietyAvailability {
-  variety: string
-  produced: number
-  sold: number
-  reserved: number
-  remaining: number
-}
-
 const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
   { value: 'CASH', label: 'Efectivo' },
   { value: 'TRANSFER', label: 'Transferencia' }
@@ -85,7 +77,6 @@ export default function PedidosPage() {
   const [formTicket, setFormTicket] = useState<Record<string, number>>({})
   const [formDeposit, setFormDeposit] = useState('')
   const [formDepositMethod, setFormDepositMethod] = useState<PaymentMethod | null>(null)
-  const [formAvailability, setFormAvailability] = useState<VarietyAvailability[]>([])
   const [savingForm, setSavingForm] = useState(false)
   const formSubmittingRef = useRef(false)
 
@@ -104,16 +95,6 @@ export default function PedidosPage() {
     } catch (error) {
       console.error('Error loading orders:', error)
       toast.error('Error al cargar los pedidos')
-    }
-  }, [])
-
-  const loadAvailability = useCallback(async (date: string) => {
-    try {
-      const response = await fetch(`/api/availability?date=${date}`)
-      const data = await response.json()
-      setFormAvailability(Array.isArray(data?.items) ? data.items : [])
-    } catch (error) {
-      console.error('Error loading availability:', error)
     }
   }, [])
 
@@ -143,10 +124,6 @@ export default function PedidosPage() {
     loadProducts()
   }, [loadProducts])
 
-  useEffect(() => {
-    loadAvailability(formDate)
-  }, [formDate, loadAvailability])
-
   const priceFor = useCallback(
     (variety: string) => {
       const product = products.find((p) => p.name.toLowerCase() === variety.toLowerCase())
@@ -154,9 +131,6 @@ export default function PedidosPage() {
     },
     [products]
   )
-
-  const availabilityFor = (variety: string) =>
-    formAvailability.find((entry) => entry.variety === variety)
 
   const formTicketItems = VARIETIES.filter((variety) => (formTicket[variety] ?? 0) > 0).map(
     (variety) => ({
@@ -177,16 +151,6 @@ export default function PedidosPage() {
   const formRemaining = Math.max(0, formTicketTotal - formDepositAmount)
 
   const addToTicket = (variety: string) => {
-    const remaining = availabilityFor(variety)?.remaining ?? 0
-    const current = formTicket[variety] ?? 0
-    if (remaining <= 0) {
-      toast.error(`${variety} está agotado`)
-      return
-    }
-    if (current >= remaining) {
-      toast.error(`Solo quedan ${remaining} piezas disponibles de ${variety}`)
-      return
-    }
     setFormTicket((prev) => ({ ...prev, [variety]: (prev[variety] ?? 0) + 1 }))
   }
 
@@ -211,7 +175,7 @@ export default function PedidosPage() {
   }
 
   const refresh = async () => {
-    await Promise.all([loadOrders(selectedDate), loadAvailability(formDate), loadProducts()])
+    await Promise.all([loadOrders(selectedDate), loadProducts()])
   }
 
   const createOrder = async () => {
@@ -252,14 +216,7 @@ export default function PedidosPage() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => null)
-        if (data?.code === 'INSUFFICIENT_STOCK' && Array.isArray(data.shortages)) {
-          const detail = data.shortages
-            .map((s: { variety: string; remaining: number }) => `${s.variety}: quedan ${s.remaining}`)
-            .join(', ')
-          toast.error(`Sin existencia: ${detail}`)
-        } else {
-          toast.error(data?.error || 'No se pudo registrar el pedido')
-        }
+        toast.error(data?.error || 'No se pudo registrar el pedido')
         await refresh()
         return
       }
@@ -363,6 +320,12 @@ export default function PedidosPage() {
   const visibleOrders = onlyPending
     ? orders.filter((order) => order.status === 'PENDING')
     : orders
+
+  // A pending order can only be fulfilled on/after its date, against that
+  // day's real production.
+  const orderIsDue = (order: Order) => order.date.slice(0, 10) <= today
+  const formatOrderDate = (order: Order) =>
+    format(new Date(`${order.date.slice(0, 10)}T12:00:00`), "d 'de' MMMM", { locale: es })
 
   if (loading) {
     return (
@@ -471,26 +434,10 @@ export default function PedidosPage() {
               <tbody className="divide-y divide-gray-200">
                 {VARIETIES.map((variety) => {
                   const quantity = formTicket[variety] ?? 0
-                  const info = availabilityFor(variety)
-                  const remaining = info?.remaining ?? 0
-                  const soldOut = remaining <= 0
                   return (
-                    <tr key={variety} className={soldOut ? 'bg-red-50/50' : ''}>
+                    <tr key={variety} className="hover:bg-gray-50">
                       <td className="px-3 py-2">
-                        <div className="flex flex-col">
-                          <span
-                            className={`font-semibold text-sm ${soldOut ? 'text-gray-400' : 'text-gray-900'}`}
-                          >
-                            {variety}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            Disponible{' '}
-                            <span className={soldOut ? 'font-semibold text-red-600' : 'font-semibold text-green-600'}>
-                              {remaining}
-                            </span>
-                            {info && info.reserved > 0 ? ` · Apartadas ${info.reserved}` : ''}
-                          </span>
-                        </div>
+                        <span className="font-semibold text-sm text-gray-900">{variety}</span>
                       </td>
                       <td className="px-2 py-2">
                         <div className="flex items-center justify-center gap-2">
@@ -510,7 +457,7 @@ export default function PedidosPage() {
                             type="button"
                             className="btn btn-success p-1.5 min-w-0 text-lg leading-none"
                             onClick={() => addToTicket(variety)}
-                            disabled={soldOut || savingForm}
+                            disabled={savingForm}
                             aria-label={`Agregar ${variety}`}
                           >
                             +
@@ -671,14 +618,20 @@ export default function PedidosPage() {
                   {(order.status === 'PENDING' || order.status === 'FULFILLED') && (
                     <div className="flex gap-2 mt-3">
                       {order.status === 'PENDING' ? (
-                        <button
-                          type="button"
-                          className="btn btn-primary flex-1 text-sm py-2"
-                          onClick={() => fulfillOrder(order)}
-                          disabled={busy}
-                        >
-                          {busy ? 'Surtiendo...' : 'Surtir'}
-                        </button>
+                        orderIsDue(order) ? (
+                          <button
+                            type="button"
+                            className="btn btn-primary flex-1 text-sm py-2"
+                            onClick={() => fulfillOrder(order)}
+                            disabled={busy}
+                          >
+                            {busy ? 'Surtiendo...' : 'Surtir'}
+                          </button>
+                        ) : (
+                          <div className="flex-1 flex items-center text-xs font-medium text-amber-700">
+                            Se surte el {formatOrderDate(order)}
+                          </div>
+                        )
                       ) : (
                         <button
                           type="button"

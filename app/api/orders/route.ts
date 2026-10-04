@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { dayRange, isValidDateKey, resolveDateKey, startOfDay } from '@/lib/date'
-import { getAvailability } from '@/lib/availability'
 import {
-  InsufficientStockError,
-  findShortages,
-  lockInventory,
   normalizeItems,
   normalizeOptionalPaymentMethod,
   parseMoney,
@@ -123,44 +119,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const order = await prisma.$transaction(
-      async (tx) => {
-        await lockInventory(tx)
-
-        // A pending order does not reserve pieces, but we still refuse to
-        // register one that cannot possibly be fulfilled with current stock.
-        const availability = await getAvailability(tx, dateKey)
-        const shortages = findShortages(items, availability)
-        if (shortages.length > 0) throw new InsufficientStockError(shortages)
-
-        return tx.order.create({
-          data: {
-            customerName,
-            customerPhone,
-            date: startOfDay(dateKey),
-            total,
-            depositAmount,
-            depositPaymentMethod: depositAmount > 0 ? depositPaymentMethod : null,
-            items: { create: pricedItems }
-          },
-          include: ORDER_INCLUDE
-        })
+    // Creating an order is a future commitment: it must NOT depend on current
+    // or future production, must not reserve pieces and must not touch stock.
+    // Inventory only comes into play later, when the order is fulfilled.
+    const order = await prisma.order.create({
+      data: {
+        customerName,
+        customerPhone,
+        date: startOfDay(dateKey),
+        total,
+        depositAmount,
+        depositPaymentMethod: depositAmount > 0 ? depositPaymentMethod : null,
+        items: { create: pricedItems }
       },
-      { maxWait: 15000, timeout: 15000 }
-    )
+      include: ORDER_INCLUDE
+    })
 
     return NextResponse.json(order, { status: 201 })
   } catch (error) {
-    if (error instanceof InsufficientStockError) {
-      return NextResponse.json(
-        {
-          error: 'No hay suficiente producción disponible para ese pedido',
-          code: 'INSUFFICIENT_STOCK',
-          shortages: error.shortages
-        },
-        { status: 409 }
-      )
-    }
     return errorResponse(error, 'Error al registrar el pedido')
   }
 }

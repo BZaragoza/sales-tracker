@@ -34,11 +34,6 @@ interface Sale {
   items: SaleItem[]
 }
 
-interface Order {
-  id: string
-  status: 'PENDING' | 'FULFILLED' | 'COMPLETED' | 'CANCELLED'
-}
-
 type PaymentMethod = 'CASH' | 'TRANSFER'
 
 const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
@@ -81,22 +76,18 @@ export default function VentaPage() {
         fetch(`/api/sales?date=${today}`),
         fetch('/api/products'),
         fetch(`/api/availability?date=${today}`),
-        fetch(`/api/orders?date=${today}`)
+        fetch(`/api/orders?date=${today}&status=PENDING`)
       ])
 
       const salesData = await salesRes.json()
       const productsData = await productsRes.json()
       const availabilityData = await availabilityRes.json()
-      const ordersData = await ordersRes.json()
+      const pendingData = await ordersRes.json()
 
       setSales(Array.isArray(salesData) ? salesData : [])
       setProducts(Array.isArray(productsData) ? productsData : [])
       setAvailability(Array.isArray(availabilityData?.items) ? availabilityData.items : [])
-      setPendingOrders(
-        Array.isArray(ordersData)
-          ? ordersData.filter((order: Order) => order.status === 'PENDING').length
-          : 0
-      )
+      setPendingOrders(Array.isArray(pendingData) ? pendingData.length : 0)
     } catch (error) {
       console.error('Error loading data:', error)
       toast.error('Error al cargar los datos')

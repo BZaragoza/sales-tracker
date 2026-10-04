@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { getAvailability } from '@/lib/availability'
+import { businessTodayKey } from '@/lib/date'
 import { InsufficientStockError, findShortages, lockInventory } from '@/lib/sales'
 
 const ORDER_INCLUDE = {
@@ -13,6 +14,11 @@ class OrderNotFoundError extends Error {}
 class InvalidOrderStateError extends Error {
   constructor(readonly status: string) {
     super('Invalid order state')
+  }
+}
+class FutureOrderError extends Error {
+  constructor(readonly dateKey: string) {
+    super('Order date is in the future')
   }
 }
 
@@ -37,7 +43,12 @@ export async function POST(
         if (existing.status === 'FULFILLED') return existing
         if (existing.status !== 'PENDING') throw new InvalidOrderStateError(existing.status)
 
-        const availability = await getAvailability(tx, toDateKey(existing.date))
+        // A future order cannot be fulfilled early: pieces are prepared on the
+        // day the customer is coming, against that day's production.
+        const orderDateKey = toDateKey(existing.date)
+        if (orderDateKey > businessTodayKey()) throw new FutureOrderError(orderDateKey)
+
+        const availability = await getAvailability(tx, orderDateKey)
         const shortages = findShortages(
           existing.items.map((item) => ({
             variety: item.product.name,
@@ -64,6 +75,15 @@ export async function POST(
     if (error instanceof InvalidOrderStateError) {
       return NextResponse.json(
         { error: 'El pedido ya no puede surtirse', code: 'INVALID_STATE', status: error.status },
+        { status: 409 }
+      )
+    }
+    if (error instanceof FutureOrderError) {
+      return NextResponse.json(
+        {
+          error: `Aún no llega la fecha del pedido (${error.dateKey}). Podrás surtirlo ese día.`,
+          code: 'ORDER_NOT_DUE'
+        },
         { status: 409 }
       )
     }
