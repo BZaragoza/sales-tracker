@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getDayCashSummary } from '@/lib/cash'
 import { isValidDateKey, resolveDateKey, startOfDay } from '@/lib/date'
 
 export async function GET(request: NextRequest) {
@@ -28,23 +29,30 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { totalProduction, expectedAmount, actualAmount, notes, date } = body
+    const { actualAmount, notes, date } = body
 
-    if (totalProduction === undefined || expectedAmount === undefined || actualAmount === undefined) {
+    if (actualAmount === undefined) {
       return NextResponse.json(
-        { error: 'Producción total, monto esperado y monto real son requeridos' },
+        { error: 'El monto real es requerido' },
         { status: 400 }
       )
     }
 
-    const data = {
-      totalProduction: parseInt(totalProduction),
-      expectedAmount: parseFloat(expectedAmount),
-      actualAmount: parseFloat(actualAmount),
-      notes: notes || null
+    const parsedActual = parseFloat(actualAmount)
+    if (Number.isNaN(parsedActual) || parsedActual < 0) {
+      return NextResponse.json({ error: 'Monto real inválido' }, { status: 400 })
     }
 
-    const day = startOfDay(resolveDateKey(date))
+    const dateKey = resolveDateKey(date)
+    const day = startOfDay(dateKey)
+    const summary = await getDayCashSummary(prisma, dateKey)
+
+    const data = {
+      totalProduction: summary.totalProduction,
+      expectedAmount: summary.expectedCash,
+      actualAmount: parsedActual,
+      notes: notes || null
+    }
 
     const cashRegister = await prisma.cashRegister.upsert({
       where: { date: day },

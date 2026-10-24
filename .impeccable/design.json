@@ -1,0 +1,495 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-24T13:38:47-06:00",
+  "title": "Design System: Tamales Lupita",
+  "extensions": {
+    "colorMeta": {
+      "service-blue": {
+        "role": "primary",
+        "displayName": "Service Blue",
+        "canonical": "#2563eb",
+        "tonalRamp": [
+          "#172554",
+          "#1e3a8a",
+          "#1e40af",
+          "#1d4ed8",
+          "#2563eb",
+          "#60a5fa",
+          "#bfdbfe",
+          "#eff6ff"
+        ]
+      },
+      "service-blue-deep": {
+        "role": "primary",
+        "displayName": "Service Blue Deep",
+        "canonical": "#1d4ed8",
+        "tonalRamp": [
+          "#172554",
+          "#1e3a8a",
+          "#1e40af",
+          "#1d4ed8",
+          "#2563eb",
+          "#60a5fa",
+          "#bfdbfe",
+          "#eff6ff"
+        ]
+      },
+      "service-blue-soft": {
+        "role": "primary",
+        "displayName": "Service Blue Soft",
+        "canonical": "#dbeafe",
+        "tonalRamp": [
+          "#172554",
+          "#1e3a8a",
+          "#1e40af",
+          "#1d4ed8",
+          "#2563eb",
+          "#60a5fa",
+          "#bfdbfe",
+          "#eff6ff"
+        ]
+      },
+      "cool-counter-gray-50": {
+        "role": "neutral",
+        "displayName": "Cool Counter Gray 50",
+        "canonical": "#f9fafb",
+        "tonalRamp": [
+          "#111827",
+          "#1f2937",
+          "#374151",
+          "#6b7280",
+          "#9ca3af",
+          "#d1d5db",
+          "#e5e7eb",
+          "#f9fafb"
+        ]
+      },
+      "cool-counter-gray-100": {
+        "role": "neutral",
+        "displayName": "Cool Counter Gray 100",
+        "canonical": "#f3f4f6",
+        "tonalRamp": [
+          "#111827",
+          "#1f2937",
+          "#374151",
+          "#6b7280",
+          "#9ca3af",
+          "#d1d5db",
+          "#e5e7eb",
+          "#f3f4f6"
+        ]
+      },
+      "cool-counter-gray-200": {
+        "role": "neutral",
+        "displayName": "Cool Counter Gray 200",
+        "canonical": "#e5e7eb",
+        "tonalRamp": [
+          "#111827",
+          "#1f2937",
+          "#374151",
+          "#6b7280",
+          "#9ca3af",
+          "#d1d5db",
+          "#e5e7eb",
+          "#f9fafb"
+        ]
+      },
+      "cool-counter-gray-300": {
+        "role": "neutral",
+        "displayName": "Cool Counter Gray 300",
+        "canonical": "#d1d5db",
+        "tonalRamp": [
+          "#111827",
+          "#1f2937",
+          "#374151",
+          "#6b7280",
+          "#9ca3af",
+          "#d1d5db",
+          "#e5e7eb",
+          "#f9fafb"
+        ]
+      },
+      "cool-counter-gray-500": {
+        "role": "neutral",
+        "displayName": "Cool Counter Gray 500",
+        "canonical": "#6b7280",
+        "tonalRamp": [
+          "#111827",
+          "#1f2937",
+          "#374151",
+          "#4b5563",
+          "#6b7280",
+          "#9ca3af",
+          "#d1d5db",
+          "#f3f4f6"
+        ]
+      },
+      "cool-counter-gray-600": {
+        "role": "neutral",
+        "displayName": "Cool Counter Gray 600",
+        "canonical": "#4b5563",
+        "tonalRamp": [
+          "#111827",
+          "#1f2937",
+          "#374151",
+          "#4b5563",
+          "#6b7280",
+          "#9ca3af",
+          "#d1d5db",
+          "#f3f4f6"
+        ]
+      },
+      "cool-counter-gray-700": {
+        "role": "neutral",
+        "displayName": "Cool Counter Gray 700",
+        "canonical": "#374151",
+        "tonalRamp": [
+          "#111827",
+          "#1f2937",
+          "#374151",
+          "#4b5563",
+          "#6b7280",
+          "#9ca3af",
+          "#d1d5db",
+          "#f3f4f6"
+        ]
+      },
+      "cool-counter-gray-900": {
+        "role": "neutral",
+        "displayName": "Cool Counter Gray 900",
+        "canonical": "#111827",
+        "tonalRamp": [
+          "#030712",
+          "#111827",
+          "#1f2937",
+          "#374151",
+          "#4b5563",
+          "#6b7280",
+          "#9ca3af",
+          "#e5e7eb"
+        ]
+      },
+      "surface-white": {
+        "role": "neutral",
+        "displayName": "Surface White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#111827",
+          "#1f2937",
+          "#374151",
+          "#6b7280",
+          "#9ca3af",
+          "#d1d5db",
+          "#f3f4f6",
+          "#ffffff"
+        ]
+      },
+      "success-green": {
+        "role": "tertiary",
+        "displayName": "Success Green",
+        "canonical": "#16a34a",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#166534",
+          "#15803d",
+          "#16a34a",
+          "#4ade80",
+          "#bbf7d0",
+          "#f0fdf4"
+        ]
+      },
+      "success-green-deep": {
+        "role": "tertiary",
+        "displayName": "Success Green Deep",
+        "canonical": "#15803d",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#166534",
+          "#15803d",
+          "#16a34a",
+          "#4ade80",
+          "#bbf7d0",
+          "#f0fdf4"
+        ]
+      },
+      "danger-red": {
+        "role": "tertiary",
+        "displayName": "Danger Red",
+        "canonical": "#dc2626",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#f87171",
+          "#fecaca",
+          "#fef2f2"
+        ]
+      },
+      "danger-red-deep": {
+        "role": "tertiary",
+        "displayName": "Danger Red Deep",
+        "canonical": "#b91c1c",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#f87171",
+          "#fecaca",
+          "#fef2f2"
+        ]
+      },
+      "attention-amber": {
+        "role": "tertiary",
+        "displayName": "Attention Amber",
+        "canonical": "#b45309",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#fbbf24",
+          "#fde68a",
+          "#fffbeb"
+        ]
+      },
+      "attention-amber-soft": {
+        "role": "tertiary",
+        "displayName": "Attention Amber Soft",
+        "canonical": "#fef3c7",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#fbbf24",
+          "#fde68a",
+          "#fffbeb"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles on small screens and top-level section headings."
+      },
+      "headline-wide": {
+        "displayName": "Headline Wide",
+        "purpose": "Page titles at the md breakpoint."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card and modal headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "General copy, inputs, buttons, and table content."
+      },
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "Secondary facts, row metadata, and inline summaries."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Table headings and short uppercase micro-labels."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-resting",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "purpose": "Every white card at rest."
+      },
+      {
+        "name": "card-hover",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Whole-card buttons and links on hover."
+      },
+      {
+        "name": "segment-selected",
+        "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        "purpose": "The white thumb inside a segmented control."
+      },
+      {
+        "name": "toast",
+        "value": "0 10px 25px rgba(0, 0, 0, 0.15)",
+        "purpose": "Floating notifications only."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default easing for color and shadow transitions over 200ms."
+      },
+      {
+        "name": "press-scale",
+        "value": "transform: scale(0.98)",
+        "purpose": "Immediate press feedback on filled buttons."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main forward action, such as confirming a sale or filtering history.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Confirmar venta</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 12px 24px; border: none; border-radius: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; font-size: 16px; font-weight: 600; line-height: 1.5; cursor: pointer; transition: background-color 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; } .ds-btn:active { transform: scale(0.98); } .ds-btn:disabled { opacity: 0.6; cursor: not-allowed; } .ds-btn-primary { background: #2563eb; color: #ffffff; } .ds-btn-primary:hover:not(:disabled) { background: #1d4ed8; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Navigation, cancel, and dismiss actions that sit beside a primary action.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Cancelar</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 12px 24px; border: none; border-radius: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; font-size: 16px; font-weight: 600; line-height: 1.5; cursor: pointer; transition: background-color 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; } .ds-btn:active { transform: scale(0.98); } .ds-btn:disabled { opacity: 0.6; cursor: not-allowed; } .ds-btn-secondary { background: #4b5563; color: #ffffff; } .ds-btn-secondary:hover:not(:disabled) { background: #374151; }"
+    },
+    {
+      "name": "Success Button",
+      "kind": "button",
+      "refersTo": "button-success",
+      "description": "Confirms a sale, fulfills an order, or saves the cash cut.",
+      "html": "<button class=\"ds-btn ds-btn-success\">Registrar venta</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 12px 24px; border: none; border-radius: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; font-size: 16px; font-weight: 600; line-height: 1.5; cursor: pointer; transition: background-color 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; } .ds-btn:active { transform: scale(0.98); } .ds-btn:disabled { opacity: 0.6; cursor: not-allowed; } .ds-btn-success { background: #15803d; color: #ffffff; } .ds-btn-success:hover:not(:disabled) { background: #166534; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labeled numeric or text field with a 2px gray stroke and a blue focus border.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Monto reportado (real) *</span><input class=\"ds-input\" type=\"number\" inputmode=\"decimal\" placeholder=\"0.00\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; } .ds-field-label { color: #4b5563; font-size: 16px; font-weight: 500; } .ds-input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; background: #ffffff; color: #111827; font-family: inherit; font-size: 16px; line-height: 1.5; transition: border-color 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-input::placeholder { color: #9ca3af; } .ds-input:focus { border-color: #2563eb; outline: none; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The base white record surface on the cool gray page.",
+      "html": "<section class=\"ds-card\"><h2 class=\"ds-card-title\">Resumen del Día</h2><p class=\"ds-card-copy\">Total producido: <strong>48</strong></p></section>",
+      "css": ".ds-card { box-sizing: border-box; padding: 24px; border-radius: 12px; background: #ffffff; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; color: #111827; } .ds-card-title { margin: 0 0 16px; font-size: 20px; font-weight: 700; line-height: 1.75rem; } .ds-card-copy { margin: 0; color: #4b5563; font-size: 16px; line-height: 1.5rem; }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "chip",
+      "refersTo": "segmented-option-selected",
+      "description": "Two- or three-way choice for payment method and deposit type.",
+      "html": "<div class=\"ds-segments\" role=\"radiogroup\" aria-label=\"Método de pago\"><button class=\"ds-segment ds-segment-active\" role=\"radio\" aria-checked=\"true\" type=\"button\">Efectivo</button><button class=\"ds-segment\" role=\"radio\" aria-checked=\"false\" type=\"button\">Transferencia</button></div>",
+      "css": ".ds-segments { display: flex; gap: 4px; padding: 4px; border-radius: 8px; background: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; } .ds-segment { flex: 1; padding: 8px 12px; border: none; border-radius: 6px; background: transparent; color: #4b5563; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 200ms, color 200ms, box-shadow 200ms; } .ds-segment:hover { color: #111827; } .ds-segment-active { background: #ffffff; color: #2563eb; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); } .ds-segment:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-pending",
+      "description": "Pill label for order state: pending, fulfilled, sold, or cancelled.",
+      "html": "<div class=\"ds-badges\"><span class=\"ds-badge ds-badge-pending\">Pendiente</span><span class=\"ds-badge ds-badge-fulfilled\">Surtido</span><span class=\"ds-badge ds-badge-completed\">Vendido</span><span class=\"ds-badge ds-badge-cancelled\">Cancelado</span></div>",
+      "css": ".ds-badges { display: flex; flex-wrap: wrap; gap: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; } .ds-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600; line-height: 1rem; } .ds-badge-pending { background: #fef9c3; color: #854d0e; } .ds-badge-fulfilled { background: #dbeafe; color: #1e40af; } .ds-badge-completed { background: #dcfce7; color: #166534; } .ds-badge-cancelled { background: #e5e7eb; color: #4b5563; }"
+    },
+    {
+      "name": "Modal",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Centered confirmation or detail card over a 50% black overlay.",
+      "html": "<div class=\"ds-overlay\"><div class=\"ds-modal\" role=\"dialog\" aria-modal=\"true\"><div class=\"ds-modal-head\"><h2 class=\"ds-modal-title\">Detalle de Producción</h2><button class=\"ds-modal-close\" type=\"button\" aria-label=\"Cerrar\">×</button></div><div class=\"ds-modal-row\"><span>Total producido</span><strong>48</strong></div><div class=\"ds-modal-actions\"><button class=\"ds-modal-secondary\" type=\"button\">Cancelar</button><button class=\"ds-modal-primary\" type=\"button\">Guardar</button></div></div></div>",
+      "css": ".ds-overlay { display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.5); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; } .ds-modal { box-sizing: border-box; width: 100%; max-width: 448px; max-height: 85vh; overflow-y: auto; padding: 24px; border-radius: 12px; background: #ffffff; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); } .ds-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; } .ds-modal-title { margin: 0; color: #111827; font-size: 20px; font-weight: 700; line-height: 1.75rem; } .ds-modal-close { padding: 0; border: none; background: transparent; color: #6b7280; font-size: 24px; line-height: 1; cursor: pointer; } .ds-modal-close:hover { color: #111827; } .ds-modal-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e7eb; color: #4b5563; font-size: 14px; } .ds-modal-actions { display: flex; gap: 8px; margin-top: 20px; } .ds-modal-secondary, .ds-modal-primary { flex: 1; min-height: 44px; border: none; border-radius: 8px; font-family: inherit; font-size: 16px; font-weight: 600; cursor: pointer; } .ds-modal-secondary { background: #4b5563; color: #ffffff; } .ds-modal-secondary:hover { background: #374151; } .ds-modal-primary { background: #2563eb; color: #ffffff; } .ds-modal-primary:hover { background: #1d4ed8; }"
+    },
+    {
+      "name": "Bottom Navigation",
+      "kind": "nav",
+      "refersTo": "card",
+      "description": "Five persistent jobs with SVG icons, labels, and an active Service Blue state.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Navegación principal\"><a href=\"#\" class=\"ds-nav-item ds-nav-active\" aria-current=\"page\"><svg class=\"ds-nav-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 10.5 12 4l8 6.5\"/><path d=\"M6.5 9.5V20h11V9.5\"/></svg><span>Hoy</span></a><a href=\"#\" class=\"ds-nav-item\"><svg class=\"ds-nav-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 7h14l-1 12H6L5 7Z\"/><path d=\"M9 10V6a3 3 0 0 1 6 0v4\"/></svg><span>Venta</span></a><a href=\"#\" class=\"ds-nav-item\"><svg class=\"ds-nav-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7 5h10v15l-2.5-1.5L12 20l-2.5-1.5L7 20V5Z\"/><path d=\"M10 9h4M10 12.5h4\"/></svg><span>Pedidos</span></a><a href=\"#\" class=\"ds-nav-item\"><svg class=\"ds-nav-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 7h14v13H5V7Z\"/><path d=\"M8 4h8v3\"/><path d=\"M8 11h8M8 15h5\"/></svg><span>Corte</span></a><a href=\"#\" class=\"ds-nav-item\"><svg class=\"ds-nav-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v4l2.5 2\"/></svg><span>Historial</span></a></nav>",
+      "css": ".ds-nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #e5e7eb; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; } .ds-nav-item { display: flex; min-height: 56px; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #4b5563; font-size: 12px; font-weight: 600; text-decoration: none; } .ds-nav-item:hover { color: #111827; } .ds-nav-item:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; } .ds-nav-active { color: #2563eb; } .ds-nav-icon { width: 20px; height: 20px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Counter Ledger",
+    "overview": "The interface behaves like a well-kept counter ledger: a quiet gray page, white sheets of information, and figures that are easy to read at a glance with a thumb on a phone. Structure carries the design. There is almost no ornament, no marketing voice, and no decoration competing with the next number the counter needs.\n\nIts density is deliberate: one narrow column, one card per job, and tables that turn each variety into a row with a quantity and an action. Color is scarce and semantic, so a blue number, a green total, or an amber warning can be trusted before the label is read.\n\nThe system is practical and unfussy. It favors native system type, standard rounded controls, and a soft lift under white cards over any custom visual language. That restraint is correct for a tool used during service, often one-handed, where familiarity is faster than novelty.",
+    "keyCharacteristics": [
+      "Single narrow column, mobile-first, centered on a cool gray page.",
+      "Persistent brand header above and five-job bottom navigation below the content.",
+      "White cards with 20–24px padding and a soft resting shadow.",
+      "Service Blue reserved for primary actions and live quantity figures.",
+      "Green for money and success, red for shortages and negative differences, amber for attention and pending state.",
+      "Large 44px touch targets with the primary action within thumb reach.",
+      "System sans-serif type with bold headings and compact uppercase labels.",
+      "A 4/8/12/16/24/32/48 spacing scale that separates jobs more than it separates fields.",
+      "Rounded 8px controls, 12px cards, and pill-shaped status badges."
+    ],
+    "rules": [
+      {
+        "name": "The One Job Per Color Rule",
+        "body": "Blue means primary action or live quantity. Green means money or success. Red means shortage or negative difference. Amber means attention or pending state. Never use a semantic color for decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Quiet Page Rule",
+        "body": "The page stays Cool Counter Gray 100 and the work happens on white cards. Do not introduce colored page backgrounds, gradients, or large accent fields.",
+        "section": "colors"
+      },
+      {
+        "name": "The Weight Does the Work Rule",
+        "body": "Keep one family. Establish hierarchy with weight and size, not with additional typefaces. Headings are 700, supporting labels 600, and body 400.",
+        "section": "typography"
+      },
+      {
+        "name": "The Uppercase Only for Labels Rule",
+        "body": "Reserve uppercase and letter-spacing for short structural labels and table headings. Never set sentences, buttons, or quantities in uppercase.",
+        "section": "typography"
+      },
+      {
+        "name": "The Lift Means Tappable Rule",
+        "body": "A shadow change on hover is reserved for surfaces that are themselves controls. Static cards do not animate or lift.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Two-Level Rule",
+        "body": "Use only two depth levels: card at rest and card raised on interaction. Do not stack shadows or invent intermediate elevations.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep the page background Cool Counter Gray 100 and put content on white cards.",
+      "Do reserve Service Blue for primary action, live quantities, and focus; keep its coverage low.",
+      "Do keep interactive targets at least 44px tall.",
+      "Do use 12px card radius and 8px control radius consistently.",
+      "Do use 20–24px card padding, a 20px stack between jobs, and 8/16px internal stacks.",
+      "Do pair every count with a plain-language label, and every money total with success-green-deep.",
+      "Do use the system sans stack; establish hierarchy with weight and size.",
+      "Do keep the five jobs in the persistent bottom bar and mark the current one.",
+      "Do give every screen a single primary action in the day overview or the form footer.",
+      "Do let a page title stand on its own; no eyebrow or kicker above it."
+    ],
+    "donts": [
+      "Don't introduce gradients, large colored background fields, or decorative accent colors.",
+      "Don't use blue, green, red, or amber for ornament; each one has a fixed operational meaning.",
+      "Don't add a second typeface or a display font.",
+      "Don't use shadows beyond the resting card, hover lift, selected segment, and toast.",
+      "Don't set paragraphs, buttons, or quantities in uppercase.",
+      "Don't shrink primary actions below 44px or hide them behind menus.",
+      "Don't replace the semantic color system with a monochrome palette; the colors are part of the ledger's legibility.",
+      "Don't soften the utilitarian tone with illustrations, mascots, or marketing copy.",
+      "Don't add eyebrows, kickers, or section numbers above headings.",
+      "Don't use emoji or Unicode glyphs as the icon system; use authored SVG icons.",
+      "Don't nest a card inside another card; use a gray-50 inset panel without shadow when a summary needs separation."
+    ]
+  }
+}

@@ -1,21 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getDayCashSummary } from '@/lib/cash'
 import { dayRange, isValidDateKey, resolveDateKey, startOfDay } from '@/lib/date'
 
 const VALID_VARIETIES = ['Rojo', 'Rajas', 'Verde', 'Prensado', 'Frijoles', 'Dulce']
-const COST_PER_PIECE = 22
 
 async function recalcCashRegister(dateKey: string) {
-  const productions = await prisma.dailyProduction.findMany({
-    where: { date: dayRange(dateKey) }
-  })
-
-  const totalProduction = productions.reduce((sum, prod) => sum + prod.quantity, 0)
-  const expectedAmount = totalProduction * COST_PER_PIECE
+  const summary = await getDayCashSummary(prisma, dateKey)
 
   await prisma.cashRegister.updateMany({
     where: { date: startOfDay(dateKey) },
-    data: { totalProduction, expectedAmount }
+    data: {
+      totalProduction: summary.totalProduction,
+      expectedAmount: summary.expectedCash
+    }
   })
 }
 

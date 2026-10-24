@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { COST_PER_PIECE } from '@/lib/constants'
 import { isValidDateKey, startOfDay, endOfDay } from '@/lib/date'
 import { saleBreakdown } from '@/lib/saleMath'
 
@@ -175,7 +174,7 @@ export async function GET(request: NextRequest) {
               ? 'Faltante'
               : 'Sobrante'
 
-      const currentExpected = productionTotal * COST_PER_PIECE
+      const currentExpected = cashAmount
       const productionChanged = cashRegister
         ? cashRegister.totalProduction !== productionTotal ||
           Math.abs(cashRegister.expectedAmount - currentExpected) > 0.01

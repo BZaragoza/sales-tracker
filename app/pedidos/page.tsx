@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { COST_PER_PIECE, VARIETIES } from '@/lib/constants'
 import { businessTodayKey } from '@/lib/date'
+import { money } from '@/lib/money'
+import { PageHeader } from '@/app/components/PageHeader'
 
 type PaymentMethod = 'CASH' | 'TRANSFER'
 type OrderStatus = 'PENDING' | 'FULFILLED' | 'COMPLETED' | 'CANCELLED'
@@ -50,7 +51,6 @@ const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
 const paymentMethodLabel = (method: PaymentMethod | null) =>
   method === 'TRANSFER' ? 'Transferencia' : method === 'CASH' ? 'Efectivo' : '—'
 
-const money = (value: number) => `$${value.toFixed(2)}`
 
 const STATUS_META: Record<OrderStatus, { label: string; classes: string }> = {
   PENDING: { label: 'Pendiente', classes: 'bg-yellow-100 text-yellow-800' },
@@ -123,6 +123,17 @@ export default function PedidosPage() {
   useEffect(() => {
     loadProducts()
   }, [loadProducts])
+
+  useEffect(() => {
+    if (!sellOrder || selling) return
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSellOrder(null)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [sellOrder, selling])
 
   const priceFor = useCallback(
     (variety: string) => {
@@ -329,65 +340,31 @@ export default function PedidosPage() {
 
   if (loading) {
     return (
-      <div className="w-full max-w-full mx-auto px-4 md:max-w-2xl md:px-6">
+      <div className="page-stack">
         <div className="card text-center">
-          <p className="text-gray-600">Cargando...</p>
+          <p className="text-gray-600">Cargando…</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-full max-w-full mx-auto px-4 py-4 md:max-w-2xl md:px-6">
-      <header className="text-center mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2">Pedidos</h1>
-        <p className="text-gray-600 mb-4">
-          {format(new Date(), "EEEE, d 'de' MMMM", { locale: es })}
-        </p>
-        <div className="flex flex-wrap justify-center gap-3">
-          <Link href="/" className="btn btn-secondary text-sm py-2 px-4">
-            ← Producción
-          </Link>
-          <Link href="/venta" className="btn btn-secondary text-sm py-2 px-4">
-            Ventas
-          </Link>
-          <Link href="/corte" className="btn btn-secondary text-sm py-2 px-4">
-            Corte
-          </Link>
-          <Link href="/historial" className="btn btn-secondary text-sm py-2 px-4">
-            Historial
-          </Link>
-        </div>
-      </header>
-
-      {/* Selección de fecha para la lista */}
-      <div className="card">
-        <label className="block text-gray-600 mb-2 font-medium">Fecha de pedidos</label>
-        <input
-          type="date"
-          className="input"
-          value={selectedDate}
-          onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-        />
-        <label className="mt-3 flex items-center gap-2 text-sm text-gray-600">
-          <input
-            type="checkbox"
-            checked={onlyPending}
-            onChange={(e) => setOnlyPending(e.target.checked)}
-          />
-          Mostrar solo pendientes de surtir
-        </label>
-      </div>
+    <div className="page-stack">
+      <PageHeader
+        title="Pedidos del día"
+        description="Aparta piezas con anticipo y surte cada pedido cuando el cliente llegue."
+      />
 
       {/* Nuevo pedido */}
       <div className="card">
-        <h2 className="text-lg font-bold mb-1">Nuevo pedido</h2>
+        <h2 className="section-title mb-1">Nuevo pedido</h2>
         <p className="text-gray-600 text-sm mb-4">Aparta productos para que el cliente los recoja</p>
 
         <div className="flex flex-col gap-4">
           <div>
-            <label className="block text-gray-600 mb-1 text-sm font-medium">Cliente *</label>
+            <label htmlFor="cliente" className="block text-gray-600 mb-1 text-sm font-medium">Cliente *</label>
             <input
+              id="cliente"
               className="input"
               value={formCustomer}
               onChange={(e) => setFormCustomer(e.target.value)}
@@ -395,8 +372,9 @@ export default function PedidosPage() {
             />
           </div>
           <div>
-            <label className="block text-gray-600 mb-1 text-sm font-medium">Teléfono</label>
+            <label htmlFor="telefono" className="block text-gray-600 mb-1 text-sm font-medium">Teléfono</label>
             <input
+              id="telefono"
               className="input"
               inputMode="tel"
               value={formPhone}
@@ -405,8 +383,9 @@ export default function PedidosPage() {
             />
           </div>
           <div>
-            <label className="block text-gray-600 mb-1 text-sm font-medium">Fecha del pedido</label>
+            <label htmlFor="fecha-pedido" className="block text-gray-600 mb-1 text-sm font-medium">Fecha del pedido</label>
             <input
+              id="fecha-pedido"
               type="date"
               className="input"
               value={formDate}
@@ -477,6 +456,8 @@ export default function PedidosPage() {
             <div className="flex gap-1 rounded-lg bg-gray-100 p-1" role="radiogroup" aria-label="Anticipo">
               <button
                 type="button"
+                role="radio"
+                aria-checked={formDepositMethod === null}
                 className={`flex-1 rounded-md py-2 text-sm font-semibold transition-colors ${
                   formDepositMethod === null ? 'bg-white text-blue-600 shadow' : 'text-gray-600'
                 }`}
@@ -521,7 +502,7 @@ export default function PedidosPage() {
           <div className="border-t border-gray-200 pt-3">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Total</span>
-              <span className="text-lg font-bold text-green-600">{money(formTicketTotal)}</span>
+              <span className="text-lg font-bold text-green-700">{money(formTicketTotal)}</span>
             </div>
             <div className="flex justify-between text-sm mt-1">
               <span className="text-gray-600">Anticipo</span>
@@ -549,11 +530,34 @@ export default function PedidosPage() {
 
       {/* Lista de pedidos */}
       <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Pedidos del día</h2>
-          <span className="text-sm text-gray-500">
-            {format(new Date(`${selectedDate}T12:00:00`), "d 'de' MMMM", { locale: es })}
-          </span>
+        <div className="section-heading">
+          <div>
+            <h2 className="section-title">Pedidos del día</h2>
+            <p className="section-note mt-1">
+              {format(new Date(`${selectedDate}T12:00:00`), "d 'de' MMMM", { locale: es })}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-lg bg-gray-50 p-3">
+          <label htmlFor="fecha-lista" className="mb-2 block text-sm font-medium text-gray-600">
+            Fecha de pedidos
+          </label>
+          <input
+            id="fecha-lista"
+            type="date"
+            className="input"
+            value={selectedDate}
+            onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+          />
+          <label className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={onlyPending}
+              onChange={(e) => setOnlyPending(e.target.checked)}
+            />
+            Mostrar solo pendientes de surtir
+          </label>
         </div>
 
         {visibleOrders.length === 0 ? (
@@ -590,7 +594,7 @@ export default function PedidosPage() {
                   <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Total</span>
-                      <span className="font-bold text-green-600">{money(order.total)}</span>
+                      <span className="font-bold text-green-700">{money(order.total)}</span>
                     </div>
                     {order.depositAmount > 0 && (
                       <>
@@ -662,16 +666,19 @@ export default function PedidosPage() {
       {/* Modal vender pedido */}
       {sellOrder && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           onClick={() => !selling && setSellOrder(null)}
         >
           <div
-            className="card max-w-md w-full mb-0 max-h-[85vh] overflow-y-auto"
+            className="card max-h-[85vh] w-full max-w-md overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="vender-pedido-titulo"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h2 className="text-xl font-bold">Vender pedido</h2>
+                <h2 id="vender-pedido-titulo" className="text-xl font-bold">Vender pedido</h2>
                 <p className="text-gray-600 text-sm">Cliente: {sellOrder.customerName}</p>
               </div>
               <button
@@ -712,7 +719,7 @@ export default function PedidosPage() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Saldo pendiente</span>
-                <span className="text-lg font-bold text-green-600">
+                <span className="text-lg font-bold text-green-700">
                   {money(orderRemaining(sellOrder))}
                 </span>
               </div>

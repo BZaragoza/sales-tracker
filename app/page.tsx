@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { VARIETIES } from '@/lib/constants'
 import { businessTodayKey } from '@/lib/date'
+import { money } from '@/lib/money'
+import { saleBreakdown } from '@/lib/saleMath'
+import { PageHeader } from '@/app/components/PageHeader'
 
 interface DailyProduction {
   id: string
@@ -15,27 +16,122 @@ interface DailyProduction {
   date: string
 }
 
+interface SaleItem {
+  id: string
+  quantity: number
+  unitPrice: number
+}
+
+interface Sale {
+  id: string
+  createdAt: string
+  paymentMethod: 'CASH' | 'TRANSFER'
+  depositAmount: number
+  depositPaymentMethod: 'CASH' | 'TRANSFER' | null
+  items: SaleItem[]
+}
+
+interface PendingOrder {
+  id: string
+  items: { quantity: number }[]
+}
+
+interface CashRegister {
+  id: string
+  expectedAmount: number
+  actualAmount: number | null
+  notes: string | null
+}
+
+interface VarietyAvailability {
+  variety: string
+  produced: number
+  sold: number
+  reserved: number
+  remaining: number
+}
+
+interface DaySnapshot {
+  productions: DailyProduction[]
+  sales: Sale[]
+  availability: VarietyAvailability[]
+  pendingOrders: PendingOrder[]
+  cashRegister: CashRegister | null
+}
+
 export default function Home() {
-  const [productions, setProductions] = useState<DailyProduction[]>([])
+  const [data, setData] = useState<DaySnapshot | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
   const [editingVariety, setEditingVariety] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState<string>('')
+  const [editValue, setEditValue] = useState('')
+  const [savingVariety, setSavingVariety] = useState<string | null>(null)
   const [incrementValues, setIncrementValues] = useState<Record<string, string>>({})
 
   const today = businessTodayKey()
   const loadingRef = useRef(false)
+  const dataRef = useRef<DaySnapshot | null>(null)
 
   const loadData = useCallback(async () => {
     if (loadingRef.current) return
     loadingRef.current = true
+    if (dataRef.current) setRefreshing(true)
+
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 12000)
+
     try {
-      const response = await fetch(`/api/production?date=${today}`)
-      const data = await response.json()
-      if (Array.isArray(data)) setProductions(data)
-    } catch (error) {
-      console.error('Error loading data:', error)
+      const [productionRes, salesRes, availabilityRes, ordersRes, registerRes] =
+        await Promise.all([
+          fetch(`/api/production?date=${today}`, { signal: controller.signal }),
+          fetch(`/api/sales?date=${today}`, { signal: controller.signal }),
+          fetch(`/api/availability?date=${today}`, { signal: controller.signal }),
+          fetch(`/api/orders?date=${today}&status=PENDING`, { signal: controller.signal }),
+          fetch(`/api/cash-register?date=${today}`, { signal: controller.signal })
+        ])
+
+      if (!productionRes.ok || !salesRes.ok || !availabilityRes.ok || !ordersRes.ok || !registerRes.ok) {
+        throw new Error('No se pudo cargar el día')
+      }
+
+      const [productions, sales, availabilityData, pendingOrders, cashRegister] =
+        await Promise.all([
+          productionRes.json(),
+          salesRes.json(),
+          availabilityRes.json(),
+          ordersRes.json(),
+          registerRes.json()
+        ])
+
+      if (
+        !Array.isArray(productions) ||
+        !Array.isArray(sales) ||
+        !Array.isArray(availabilityData?.items) ||
+        !Array.isArray(pendingOrders)
+      ) {
+        throw new Error('Respuesta inesperada del servidor')
+      }
+
+      const snapshot: DaySnapshot = {
+        productions,
+        sales,
+        availability: availabilityData.items,
+        pendingOrders,
+        cashRegister: cashRegister?.id ? cashRegister : null
+      }
+
+      dataRef.current = snapshot
+      setData(snapshot)
+      setError(null)
+    } catch (loadError) {
+      console.error('Error loading data:', loadError)
+      setError('No pudimos cargar el estado del día. Revisa la conexión e inténtalo de nuevo.')
     } finally {
+      window.clearTimeout(timeout)
       loadingRef.current = false
+      setRefreshing(false)
       setLoading(false)
     }
   }, [today])
@@ -46,312 +142,479 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [loadData])
 
-  const getQuantityForVariety = (variety: string): number => {
-    const production = productions.find(p => p.variety === variety)
-    return production?.quantity || 0
+  const cancelEdit = useCallback(() => {
+    setEditingVariety(null)
+    setEditValue('')
+  }, [])
+
+  useEffect(() => {
+    if (!editingVariety) return
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !savingVariety) cancelEdit()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [editingVariety, savingVariety, cancelEdit])
+
+  const productions = data?.productions ?? []
+  const sales = data?.sales ?? []
+  const availability = data?.availability ?? []
+  const pendingOrders = data?.pendingOrders ?? []
+  const cashRegister = data?.cashRegister ?? null
+
+  const productionFor = (variety: string) =>
+    productions.find((production) => production.variety === variety)
+
+  const availabilityFor = (variety: string) =>
+    availability.find((entry) => entry.variety === variety)
+
+  const totalProduced = productions.reduce((sum, production) => sum + production.quantity, 0)
+  const totalSold = sales.reduce(
+    (sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
+    0
+  )
+  const totalRemaining = availability.reduce((sum, entry) => sum + entry.remaining, 0)
+  const pendingPieces = pendingOrders.reduce(
+    (sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
+    0
+  )
+  const cashCollected = sales.reduce((sum, sale) => sum + saleBreakdown(sale).cash, 0)
+  const transferCollected = sales.reduce((sum, sale) => sum + saleBreakdown(sale).transfer, 0)
+  const reportedAmount = cashRegister?.actualAmount ?? null
+  const difference = reportedAmount !== null ? reportedAmount - cashCollected : null
+
+  const closeLabel = !cashRegister
+    ? 'Sin cerrar'
+    : reportedAmount === null
+      ? 'Sin reportar'
+      : Math.abs(difference ?? 0) < 0.005
+        ? 'Cuadra'
+        : (difference ?? 0) < 0
+          ? 'Faltante'
+          : 'Sobrante'
+
+  const closeTone = !cashRegister
+    ? 'text-amber-700'
+    : Math.abs(difference ?? 0) < 0.005
+      ? 'text-green-700'
+      : (difference ?? 0) < 0
+        ? 'text-red-700'
+        : 'text-amber-700'
+
+  let nextAction = { label: 'Registrar producción', href: '#produccion' }
+  if (totalProduced > 0 && pendingOrders.length > 0) {
+    nextAction = {
+      label: `Surtir ${pendingOrders.length} ${pendingOrders.length === 1 ? 'pedido' : 'pedidos'}`,
+      href: '/pedidos'
+    }
+  } else if (totalProduced > 0 && totalSold === 0) {
+    nextAction = { label: 'Registrar primera venta', href: '/venta' }
+  } else if (totalProduced > 0 && !cashRegister) {
+    nextAction = { label: 'Cerrar caja', href: '/corte' }
+  } else if (cashRegister) {
+    nextAction = { label: 'Ver corte', href: '/corte' }
   }
 
-  const handleIncrement = async (variety: string, increment: number) => {
-    if (increment === 0) return
+  const handleIncrement = async (variety: string) => {
+    const value = incrementValues[variety] ?? ''
+    const increment = Number.parseInt(value, 10)
+    if (Number.isNaN(increment) || increment <= 0) return
 
-    // Actualización optimista
-    const currentQuantity = getQuantityForVariety(variety)
-    const newQuantity = currentQuantity + increment
-    
-    setProductions(prev => {
-      const existing = prev.find(p => p.variety === variety)
-      if (existing) {
-        return prev.map(p => 
-          p.variety === variety 
-            ? { ...p, quantity: newQuantity }
-            : p
-        )
-      } else {
-        return [...prev, {
-          id: `temp-${variety}`,
-          variety,
-          quantity: newQuantity,
-          date: today
-        }]
-      }
-    })
-
-    // Limpiar input
-    setIncrementValues(prev => ({ ...prev, [variety]: '' }))
-
+    setSavingVariety(variety)
     try {
       const response = await fetch('/api/production/increment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          variety,
-          increment,
-          date: today
-        })
+        body: JSON.stringify({ variety, increment, date: today })
       })
 
-      if (response.ok) {
-        const updated = await response.json()
-        // Actualizar con los datos reales del servidor
-        setProductions(prev => [
-          ...prev.filter(p => p.variety !== variety),
-          updated
-        ])
-      } else {
-        // Revertir en caso de error
-        loadData()
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        throw new Error(payload?.error || 'No se pudo agregar la producción')
       }
-    } catch (error) {
-      console.error('Error incrementing:', error)
-      // Revertir en caso de error
-      loadData()
+
+      const updated: DailyProduction = await response.json()
+      setData((previous) =>
+        previous
+          ? {
+              ...previous,
+              productions: [
+                ...previous.productions.filter((row) => row.variety !== variety),
+                updated
+              ]
+            }
+          : previous
+      )
+      dataRef.current = dataRef.current
+        ? {
+            ...dataRef.current,
+            productions: [
+              ...dataRef.current.productions.filter((row) => row.variety !== variety),
+              updated
+            ]
+          }
+        : dataRef.current
+      setIncrementValues((previous) => ({ ...previous, [variety]: '' }))
+      toast.success(`${variety}: +${increment} piezas`)
+      await loadData()
+    } catch (incrementError) {
+      console.error('Error incrementing:', incrementError)
+      toast.error(`No se guardó el cambio de ${variety}. Inténtalo de nuevo.`)
+    } finally {
+      setSavingVariety(null)
     }
   }
 
   const handleSetTotal = async (variety: string) => {
-    const quantity = parseInt(editValue)
-    if (isNaN(quantity) || quantity < 0) {
-      toast.error('Por favor ingresa un número válido')
+    const quantity = Number.parseInt(editValue, 10)
+    if (Number.isNaN(quantity) || quantity < 0) {
+      toast.error('Ingresa una cantidad válida')
       return
     }
 
-    // Actualización optimista
-    setProductions(prev => {
-      const existing = prev.find(p => p.variety === variety)
-      if (existing) {
-        return prev.map(p => 
-          p.variety === variety 
-            ? { ...p, quantity }
-            : p
-        )
-      } else {
-        return [...prev, {
-          id: `temp-${variety}`,
-          variety,
-          quantity,
-          date: today
-        }]
-      }
-    })
+    const availabilityRow = availabilityFor(variety)
+    const minimum = (availabilityRow?.sold ?? 0) + (availabilityRow?.reserved ?? 0)
+    if (quantity < minimum) {
+      toast.error(`No puede ser menor a ${minimum}: ya hay piezas vendidas o apartadas.`)
+      return
+    }
 
-    setEditingVariety(null)
-    setEditValue('')
-
+    setSavingVariety(variety)
     try {
       const response = await fetch('/api/production', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          variety,
-          quantity,
-          date: today
-        })
+        body: JSON.stringify({ variety, quantity, date: today })
       })
 
-      if (response.ok) {
-        const updated = await response.json()
-        // Actualizar con los datos reales del servidor
-        setProductions(prev => [
-          ...prev.filter(p => p.variety !== variety),
-          updated
-        ])
-      } else {
-        // Revertir en caso de error
-        loadData()
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        throw new Error(payload?.error || 'No se pudo guardar el total')
       }
-    } catch (error) {
-      console.error('Error setting total:', error)
-      // Revertir en caso de error
-      loadData()
+
+      const updated: DailyProduction = await response.json()
+      setData((previous) =>
+        previous
+          ? {
+              ...previous,
+              productions: [
+                ...previous.productions.filter((row) => row.variety !== variety),
+                updated
+              ]
+            }
+          : previous
+      )
+      dataRef.current = dataRef.current
+        ? {
+            ...dataRef.current,
+            productions: [
+              ...dataRef.current.productions.filter((row) => row.variety !== variety),
+              updated
+            ]
+          }
+        : dataRef.current
+      setEditingVariety(null)
+      setEditValue('')
+      toast.success(`${variety}: total fijado en ${quantity}`)
+      await loadData()
+    } catch (totalError) {
+      console.error('Error setting total:', totalError)
+      toast.error(`No se guardó el total de ${variety}. El modal sigue abierto.`)
+    } finally {
+      setSavingVariety(null)
     }
   }
 
-  const startEdit = (variety: string) => {
-    setEditingVariety(variety)
-    setEditValue(getQuantityForVariety(variety).toString())
-  }
-
-  const cancelEdit = () => {
-    setEditingVariety(null)
-    setEditValue('')
-  }
-
-  const handleIncrementInputChange = (variety: string, value: string) => {
-    setIncrementValues(prev => ({ ...prev, [variety]: value }))
-  }
-
-  const handleIncrementSubmit = (variety: string, e?: React.FormEvent) => {
-    if (e) {
-      e.preventDefault()
-    }
-    const value = incrementValues[variety] || ''
-    const increment = parseInt(value)
-    if (!isNaN(increment) && increment > 0) {
-      handleIncrement(variety, increment)
-    }
-  }
-
-  if (loading) {
+  if (loading && !data) {
     return (
-      <div className="w-full max-w-full mx-auto px-4 md:max-w-2xl md:px-6">
-        <div className="card text-center">
-          <p className="text-gray-600">Cargando...</p>
+      <div className="page-stack" aria-busy="true" aria-label="Cargando el día">
+        <div className="card animate-pulse">
+          <div className="h-3 w-20 rounded bg-gray-200" />
+          <div className="mt-3 h-8 w-48 rounded bg-gray-200" />
+          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="border-t border-gray-200 pt-3">
+                <div className="h-2.5 w-16 rounded bg-gray-200" />
+                <div className="mt-2 h-6 w-12 rounded bg-gray-200" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="card animate-pulse">
+          <div className="h-6 w-40 rounded bg-gray-200" />
+          <div className="mt-5 space-y-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="h-12 rounded bg-gray-100" />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <div className="page-stack">
+        <PageHeader
+          title="Estado del día"
+          description="Producción, ventas y cierre en un solo lugar."
+        />
+        <div className="state-note state-error" role="alert">
+          <p>{error ?? 'No pudimos cargar el estado del día.'}</p>
+          <button type="button" className="btn btn-primary btn-compact mt-3" onClick={loadData}>
+            Reintentar
+          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-full max-w-full mx-auto px-4 py-4 md:max-w-2xl md:px-6">
-      <header className="text-center mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2">Registro de Producción</h1>
-        <p className="text-gray-600 mb-4">
-          {format(new Date(), "EEEE, d 'de' MMMM", { locale: es })}
-        </p>
-        <div className="flex flex-wrap justify-center gap-3">
-          <Link href="/venta" className="btn btn-primary text-sm py-2 px-4">
-            Ir a Ventas →
-          </Link>
-          <Link href="/corte" className="btn btn-secondary text-sm py-2 px-4">
-            Corte
-          </Link>
-          <Link href="/historial" className="btn btn-secondary text-sm py-2 px-4">
-            Historial
-          </Link>
-          <Link href="/pedidos" className="btn btn-secondary text-sm py-2 px-4">
-            Pedidos
+    <div className="page-stack">
+      <PageHeader
+        title="Hoy"
+        description="Producción, ventas y cierre del mostrador."
+      />
+
+      {error ? (
+        <div className="state-note state-error flex flex-wrap items-center justify-between gap-3" role="alert">
+          <span>Los datos no se pudieron actualizar. Se muestra la última lectura disponible.</span>
+          <button type="button" className="btn btn-secondary btn-compact" onClick={loadData}>
+            Reintentar
+          </button>
+        </div>
+      ) : null}
+
+      <section className="day-overview" aria-labelledby="resumen-dia">
+        <div className="day-overview-head">
+          <div>
+            <h2 id="resumen-dia" className="text-xl font-bold text-gray-900">
+              Estado del día
+            </h2>
+            <p className="section-note mt-1">
+              {refreshing ? 'Actualizando…' : 'Lo que llevas del turno y lo que sigue.'}
+            </p>
+          </div>
+          <Link href={nextAction.href} className="btn btn-primary">
+            {nextAction.label}
           </Link>
         </div>
-      </header>
 
-      {/* Modal para editar cantidad total */}
-      {editingVariety && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={cancelEdit}
+        <dl className="day-metrics">
+          <div className="day-metric">
+            <dt className="day-metric-label">Producido</dt>
+            <dd className="day-metric-value">{totalProduced}</dd>
+            <dd className="day-metric-note">piezas registradas</dd>
+          </div>
+          <div className="day-metric">
+            <dt className="day-metric-label">Vendido</dt>
+            <dd className="day-metric-value">{totalSold}</dd>
+            <dd className="day-metric-note">piezas en {sales.length} ventas</dd>
+          </div>
+          <div className="day-metric">
+            <dt className="day-metric-label">Por surtir</dt>
+            <dd className="day-metric-value">{pendingPieces}</dd>
+            <dd className="day-metric-note">
+              {pendingOrders.length} {pendingOrders.length === 1 ? 'pedido pendiente' : 'pedidos pendientes'}
+            </dd>
+          </div>
+          <div className="day-metric">
+            <dt className="day-metric-label">Disponible</dt>
+            <dd className="day-metric-value">{totalRemaining}</dd>
+            <dd className="day-metric-note">piezas aún sin vender</dd>
+          </div>
+          <div className="day-metric">
+            <dt className="day-metric-label">Efectivo</dt>
+            <dd className="day-metric-value">{money(cashCollected)}</dd>
+            <dd className="day-metric-note">transferencias {money(transferCollected)}</dd>
+          </div>
+          <div className="day-metric">
+            <dt className="day-metric-label">Cierre</dt>
+            <dd className={`day-metric-value ${closeTone}`}>{closeLabel}</dd>
+            <dd className="day-metric-note">
+              {reportedAmount !== null ? `Reportado ${money(reportedAmount)}` : `Esperado ${money(cashCollected)}`}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section id="produccion" className="card" aria-labelledby="produccion-titulo">
+        <div className="section-heading mb-4">
+          <div>
+            <h2 id="produccion-titulo" className="section-title">
+              Producción de hoy
+            </h2>
+            <p className="section-note mt-1">Toca la cantidad para fijar el total o agrega piezas.</p>
+          </div>
+          <span className="status-pill status-pill-neutral">{totalProduced} piezas</span>
+        </div>
+
+        <ul className="production-list">
+          {VARIETIES.map((variety) => {
+            const production = productionFor(variety)
+            const quantity = production?.quantity ?? 0
+            const row = availabilityFor(variety)
+            const sold = row?.sold ?? 0
+            const produced = row?.produced ?? 0
+            const remaining = row?.remaining ?? 0
+            const notProduced = produced === 0
+            const soldOut = remaining <= 0
+            const availabilityLabel = notProduced
+              ? 'Sin producción'
+              : soldOut
+                ? 'Agotado'
+                : `Disponibles ${remaining}`
+            const availabilityTone = notProduced
+              ? 'text-gray-600'
+              : soldOut
+                ? 'text-red-700'
+                : 'text-green-700'
+            const incrementValue = incrementValues[variety] ?? ''
+            const saving = savingVariety === variety
+            const inputId = `agregar-${variety.toLowerCase()}`
+
+            return (
+              <li key={variety} className="production-row">
+                <div className="min-w-0">
+                  <p className="production-name">{variety}</p>
+                  <p className="production-meta">
+                    Vendidas {sold} ·{' '}
+                    <span className={`font-semibold ${availabilityTone}`}>{availabilityLabel}</span>
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="quantity-button"
+                  onClick={() => {
+                    setEditingVariety(variety)
+                    setEditValue(String(quantity))
+                  }}
+                  aria-label={`Fijar el total de ${variety}. Ahora hay ${quantity} piezas.`}
+                >
+                  {quantity}
+                </button>
+
+                <form
+                  className="production-add"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    handleIncrement(variety)
+                  }}
+                >
+                  <label htmlFor={inputId} className="sr-only">
+                    Piezas a agregar de {variety}
+                  </label>
+                  <input
+                    id={inputId}
+                    type="number"
+                    min="1"
+                    inputMode="numeric"
+                    className="input input-compact"
+                    value={incrementValue}
+                    onChange={(event) =>
+                      setIncrementValues((previous) => ({
+                        ...previous,
+                        [variety]: event.target.value
+                      }))
+                    }
+                    placeholder="0"
+                    disabled={saving}
+                  />
+                  <button
+                    type="submit"
+                    className="btn btn-success btn-compact flex-1 sm:flex-none"
+                    disabled={saving || !incrementValue || Number.parseInt(incrementValue, 10) <= 0}
+                  >
+                    {saving ? 'Guardando…' : '+ Agregar'}
+                  </button>
+                </form>
+              </li>
+            )
+          })}
+        </ul>
+
+        <div className="mt-5 flex items-center justify-between border-t border-gray-200 pt-4">
+          <span className="text-sm font-semibold text-gray-600">Total producido</span>
+          <span className="text-xl font-bold text-blue-600">{totalProduced}</span>
+        </div>
+      </section>
+
+      {editingVariety ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => {
+            if (!savingVariety) cancelEdit()
+          }}
         >
-          <div 
-            className="card max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
+          <div
+            className="card w-full max-w-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="editar-total-titulo"
+            onClick={(event) => event.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-4">Editar {editingVariety}</h2>
-            <form onSubmit={(e) => {
-              e.preventDefault()
-              handleSetTotal(editingVariety)
-            }}>
-              <div className="mb-4">
-                <label className="block text-gray-600 mb-2 font-medium">
-                  Cantidad total:
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  className="input"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  placeholder="0"
-                  autoFocus
-                />
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="editar-total-titulo" className="text-xl font-bold text-gray-900">
+                  Fijar total de {editingVariety}
+                </h2>
+                <p className="section-note mt-1">
+                  El total no puede ser menor a las piezas ya vendidas o apartadas.
+                </p>
               </div>
-              <div className="flex gap-2">
+              <button
+                type="button"
+                className="text-2xl leading-none text-gray-500 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                onClick={cancelEdit}
+                aria-label="Cerrar"
+                disabled={Boolean(savingVariety)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form
+              className="mt-5"
+              onSubmit={(event) => {
+                event.preventDefault()
+                handleSetTotal(editingVariety)
+              }}
+            >
+              <label htmlFor="total-produccion" className="mb-2 block text-sm font-semibold text-gray-600">
+                Cantidad total
+              </label>
+              <input
+                id="total-produccion"
+                type="number"
+                min="0"
+                inputMode="numeric"
+                className="input"
+                value={editValue}
+                onChange={(event) => setEditValue(event.target.value)}
+                placeholder="0"
+                autoFocus
+                disabled={Boolean(savingVariety)}
+              />
+              <div className="mt-5 flex gap-2">
                 <button
                   type="button"
                   className="btn btn-secondary flex-1"
                   onClick={cancelEdit}
+                  disabled={Boolean(savingVariety)}
                 >
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary flex-1"
-                >
-                  Guardar
+                <button type="submit" className="btn btn-primary flex-1" disabled={Boolean(savingVariety)}>
+                  {savingVariety ? 'Guardando…' : 'Guardar total'}
                 </button>
               </div>
             </form>
           </div>
         </div>
-      )}
-
-      {/* Lista de variedades */}
-      <div className="card overflow-hidden p-0">
-        <table className="w-full">
-          <colgroup>
-            <col className="w-auto" />
-            <col className="w-20" />
-            <col className="w-14" />
-            <col className="w-28" />
-          </colgroup>
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-3 py-3 text-left text-xs md:text-sm font-semibold text-gray-700">Variedad</th>
-              <th className="px-2 py-3 text-center text-xs md:text-sm font-semibold text-gray-700">Cantidad</th>
-              <th className="px-1 py-3 text-center text-xs md:text-sm font-semibold text-gray-700">Editar</th>
-              <th className="px-2 py-3 text-center text-xs md:text-sm font-semibold text-gray-700">Agregar</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {VARIETIES.map((variety) => {
-              const currentQuantity = getQuantityForVariety(variety)
-              const incrementValue = incrementValues[variety] || ''
-
-              return (
-                <tr key={variety} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-3 py-3">
-                    <span className="font-semibold text-gray-900 text-sm md:text-base whitespace-nowrap">{variety}</span>
-                  </td>
-                  <td className="px-2 py-3 text-center">
-                    <span className="text-lg md:text-xl font-bold text-blue-600">{currentQuantity}</span>
-                  </td>
-                  <td className="px-1 py-3 text-center">
-                    <button
-                      type="button"
-                      className="btn btn-secondary p-1.5 min-w-0 text-base"
-                      onClick={() => startEdit(variety)}
-                      title="Editar cantidad total"
-                    >
-                      ✏️
-                    </button>
-                  </td>
-                  <td className="px-2 py-3">
-                    <form 
-                      onSubmit={(e) => handleIncrementSubmit(variety, e)}
-                      className="flex gap-1 items-center"
-                    >
-                      <input
-                        type="number"
-                        min="1"
-                        className="input text-sm py-1.5 px-2 w-14"
-                        value={incrementValue}
-                        onChange={(e) => handleIncrementInputChange(variety, e.target.value)}
-                        placeholder="0"
-                      />
-                      <button
-                        type="submit"
-                        className="btn btn-success px-2.5 py-1.5 text-sm min-w-0 flex-shrink-0"
-                        disabled={!incrementValue || isNaN(parseInt(incrementValue)) || parseInt(incrementValue) <= 0}
-                      >
-                        +
-                      </button>
-                    </form>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Resumen */}
-      <div className="card mt-6">
-        <h2 className="text-xl font-bold mb-4">Resumen del Día</h2>
-        <div className="flex justify-between items-center">
-          <span className="text-gray-600">Total producido:</span>
-          <span className="text-2xl font-bold text-green-600">
-            {productions.reduce((sum, p) => sum + p.quantity, 0)}
-          </span>
-        </div>
-      </div>
+      ) : null}
     </div>
   )
 }

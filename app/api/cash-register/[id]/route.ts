@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { getDayCashSummary } from '@/lib/cash'
 
 export async function PUT(
   request: NextRequest,
@@ -8,21 +9,33 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const { totalProduction, expectedAmount, actualAmount, notes } = body
+    const { actualAmount, notes } = body
 
-    if (totalProduction === undefined || expectedAmount === undefined || actualAmount === undefined) {
+    if (actualAmount === undefined) {
       return NextResponse.json(
-        { error: 'Producción total, monto esperado y monto real son requeridos' },
+        { error: 'El monto real es requerido' },
         { status: 400 }
       )
     }
 
+    const parsedActual = parseFloat(actualAmount)
+    if (Number.isNaN(parsedActual) || parsedActual < 0) {
+      return NextResponse.json({ error: 'Monto real inválido' }, { status: 400 })
+    }
+
+    const existing = await prisma.cashRegister.findUnique({ where: { id: params.id } })
+    if (!existing) {
+      return NextResponse.json({ error: 'Corte no encontrado' }, { status: 404 })
+    }
+
+    const summary = await getDayCashSummary(prisma, existing.date.toISOString().slice(0, 10))
+
     const cashRegister = await prisma.cashRegister.update({
       where: { id: params.id },
       data: {
-        totalProduction: parseInt(totalProduction),
-        expectedAmount: parseFloat(expectedAmount),
-        actualAmount: parseFloat(actualAmount),
+        totalProduction: summary.totalProduction,
+        expectedAmount: summary.expectedCash,
+        actualAmount: parsedActual,
         notes: notes || null
       }
     })

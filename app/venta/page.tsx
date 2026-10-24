@@ -7,6 +7,8 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { COST_PER_PIECE, VARIETIES } from '@/lib/constants'
 import { businessTodayKey } from '@/lib/date'
+import { money } from '@/lib/money'
+import { PageHeader } from '@/app/components/PageHeader'
 
 interface Product {
   id: string
@@ -105,6 +107,17 @@ export default function VentaPage() {
       clearInterval(interval)
     }
   }, [loadData])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || saving) return
+      setSelectedSale(null)
+      setShowConfirm(false)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [saving])
 
   const priceFor = (variety: string): number => {
     const product = products.find(p => p.name.toLowerCase() === variety.toLowerCase())
@@ -224,45 +237,42 @@ export default function VentaPage() {
 
   if (loading) {
     return (
-      <div className="w-full max-w-full mx-auto px-4 md:max-w-2xl md:px-6">
+      <div className="page-stack">
         <div className="card text-center">
-          <p className="text-gray-600">Cargando...</p>
+          <p className="text-gray-600">Cargando…</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-full max-w-full mx-auto px-4 py-4 md:max-w-2xl md:px-6">
-      <header className="text-center mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2">Registro de Ventas</h1>
-        <p className="text-gray-600 mb-4">
-          {format(new Date(), "EEEE, d 'de' MMMM", { locale: es })}
-        </p>
-        <div className="flex flex-wrap justify-center gap-3">
-          <Link href="/" className="btn btn-secondary text-sm py-2 px-4">
-            ← Producción
-          </Link>
-          <Link href="/corte" className="btn btn-secondary text-sm py-2 px-4">
-            Corte →
-          </Link>
-          <Link href="/historial" className="btn btn-secondary text-sm py-2 px-4">
-            Historial
-          </Link>
-          <Link href="/pedidos" className="btn btn-secondary text-sm py-2 px-4">
-            Pedidos
-          </Link>
-        </div>
-      </header>
+    <div className="page-stack">
+      <PageHeader
+        title="Registro de ventas"
+        description="Arma la comanda, confirma el pago y registra la venta del mostrador."
+      />
 
       {/* Recordatorio de pedidos pendientes de surtir */}
       {pendingOrders > 0 && (
         <Link
           href="/pedidos"
-          className="card mb-4 flex items-center justify-between gap-3 border border-amber-200 bg-amber-50 transition-shadow hover:shadow-lg"
+          className="card flex items-center justify-between gap-3 border border-amber-200 bg-amber-50 shadow-none transition-shadow hover:shadow-md"
         >
           <div className="flex items-center gap-2">
-            <span className="text-xl" aria-hidden="true">⚠️</span>
+            <svg
+              className="h-5 w-5 shrink-0 text-amber-700"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 4 21 20H3L12 4Z" />
+              <path d="M12 10v4" />
+              <path d="M12 17h.01" />
+            </svg>
             <span className="font-semibold text-amber-900">
               Pedidos pendientes de surtir: {pendingOrders}
             </span>
@@ -276,17 +286,20 @@ export default function VentaPage() {
       {/* Modal detalle de venta */}
       {selectedSale && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           onClick={() => setSelectedSale(null)}
         >
           <div
-            className="card max-w-md w-full mb-0 max-h-[85vh] overflow-y-auto"
+            className="card max-h-[85vh] w-full max-w-md overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="detalle-venta-titulo"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-start mb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold">Venta #{selectedSaleNumber}</h2>
+                  <h2 id="detalle-venta-titulo" className="text-xl font-bold">Venta #{selectedSaleNumber}</h2>
                   {selectedSale.orderId && (
                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
                       Pedido
@@ -332,7 +345,7 @@ export default function VentaPage() {
 
             <div className="flex justify-between items-center mt-3 pt-3 border-t-2 border-gray-200">
               <span className="text-lg font-bold">Total</span>
-              <span className="text-2xl font-bold text-green-600">${saleTotal(selectedSale).toFixed(2)}</span>
+              <span className="text-2xl font-bold text-green-700">{money(saleTotal(selectedSale))}</span>
             </div>
           </div>
         </div>
@@ -341,16 +354,19 @@ export default function VentaPage() {
       {/* Modal confirmar orden (vista previa, solo lectura) */}
       {showConfirm && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           onClick={() => setShowConfirm(false)}
         >
           <div
-            className="card max-w-md w-full mb-0 max-h-[85vh] overflow-y-auto"
+            className="card max-h-[85vh] w-full max-w-md overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirmar-orden-titulo"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h2 className="text-xl font-bold">Confirmar orden</h2>
+                <h2 id="confirmar-orden-titulo" className="text-xl font-bold">Confirmar venta</h2>
                 <p className="text-gray-600 text-sm">Revisa la comanda antes de registrarla</p>
               </div>
               <button
@@ -379,7 +395,7 @@ export default function VentaPage() {
 
             <div className="flex justify-between items-center mt-3 pt-3 border-t-2 border-gray-200">
               <span className="text-lg font-bold">Total a pagar</span>
-              <span className="text-2xl font-bold text-green-600">${ticketTotal.toFixed(2)}</span>
+              <span className="text-2xl font-bold text-green-700">{money(ticketTotal)}</span>
             </div>
 
             <div className="mt-5">
@@ -437,7 +453,7 @@ export default function VentaPage() {
       )}
 
       {/* Armado de la venta */}
-      <div className="card overflow-hidden p-0">
+      <div className="card card-flush">
         <div className="px-4 pt-4 pb-2">
           <h2 className="text-lg font-bold">Nueva venta</h2>
           <p className="text-gray-600 text-sm">Agrega las variedades de esta comanda</p>
@@ -468,12 +484,12 @@ export default function VentaPage() {
                 >
                   <td className="px-3 py-3">
                     <div className="flex flex-col">
-                      <span className={`font-semibold text-sm md:text-base whitespace-nowrap ${soldOut ? 'text-gray-400' : 'text-gray-900'}`}>
+                      <span className={`font-semibold text-sm md:text-base whitespace-nowrap ${soldOut ? 'text-gray-500' : 'text-gray-900'}`}>
                         {variety}
                       </span>
                       <span className="text-xs text-gray-500">
                         Producción {produced} · Vendidas {sold} ·{' '}
-                        <span className={soldOut ? 'font-semibold text-red-600' : 'font-semibold text-green-600'}>
+                        <span className={soldOut ? 'font-semibold text-red-600' : 'font-semibold text-green-700'}>
                           {soldOut ? 'Agotado' : `Disponible ${remaining}`}
                         </span>
                       </span>
@@ -510,7 +526,7 @@ export default function VentaPage() {
       </div>
 
       {/* Total de la venta en curso */}
-      <div className="card mt-4">
+      <div className="card">
         {ticketCount === 0 ? (
           <p className="text-gray-600 text-center">Agrega variedades para armar la venta</p>
         ) : (
@@ -529,7 +545,7 @@ export default function VentaPage() {
             </div>
             <div className="flex justify-between items-center border-t border-gray-200 pt-3 mb-4">
               <span className="text-lg font-bold">Total a cobrar</span>
-              <span className="text-2xl font-bold text-green-600">${ticketTotal.toFixed(2)}</span>
+              <span className="text-2xl font-bold text-green-700">{money(ticketTotal)}</span>
             </div>
             {overLimitItems.length > 0 && (
               <p className="text-sm text-red-600 mb-3">
@@ -551,35 +567,40 @@ export default function VentaPage() {
                 onClick={() => setShowConfirm(true)}
                 disabled={overLimitItems.length > 0}
               >
-                Confirmar orden
+                Confirmar venta
               </button>
             </div>
           </>
         )}
       </div>
 
-      {/* Resumen del día */}
-      <div className="card mt-6">
-        <h2 className="text-xl font-bold mb-4">Resumen de Ventas</h2>
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Total vendidos:</span>
-            <span className="text-2xl font-bold text-blue-600">{totalSold}</span>
+      {/* Resumen y lista de ventas del día */}
+      <div className="card">
+        <div className="section-heading">
+          <div>
+            <h2 className="section-title">Ventas del día</h2>
+            <p className="section-note mt-1">Toca una venta para revisar su detalle.</p>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Monto total:</span>
-            <span className="text-2xl font-bold text-green-600">${totalAmount.toFixed(2)}</span>
-          </div>
+          <span className="status-pill status-pill-neutral">
+            {sales.length} {sales.length === 1 ? 'venta' : 'ventas'}
+          </span>
         </div>
-      </div>
 
-      {/* Lista de ventas del día */}
-      <div className="card mt-4">
-        <h2 className="text-xl font-bold mb-4">Ventas del día</h2>
+        <dl className="mt-4 grid grid-cols-2 gap-4 border-b border-gray-100 pb-4">
+          <div>
+            <dt className="day-metric-label">Total vendidos</dt>
+            <dd className="mt-1 text-2xl font-bold text-blue-600">{totalSold}</dd>
+          </div>
+          <div className="text-right">
+            <dt className="day-metric-label">Monto total</dt>
+            <dd className="mt-1 text-2xl font-bold text-green-700">{money(totalAmount)}</dd>
+          </div>
+        </dl>
+
         {sales.length === 0 ? (
-          <p className="text-gray-600 text-center py-4">No hay ventas registradas hoy</p>
+          <p className="py-4 text-center text-gray-600">No hay ventas registradas hoy.</p>
         ) : (
-          <div className="flex flex-col">
+          <div className="mt-2 flex flex-col">
             {sales.map((sale, index) => (
               <button
                 key={sale.id}
@@ -614,7 +635,7 @@ export default function VentaPage() {
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-600">Total</span>
-                  <span className="font-bold text-green-600">${saleTotal(sale).toFixed(2)}</span>
+                  <span className="font-bold text-green-700">{money(saleTotal(sale))}</span>
                 </div>
               </button>
             ))}

@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import toast from 'react-hot-toast'
-import { COST_PER_PIECE } from '@/lib/constants'
 import { saleBreakdown } from '@/lib/saleMath'
+import { money } from '@/lib/money'
+import { PageHeader } from '@/app/components/PageHeader'
 
 interface HistoryProduction {
   hasRecord: boolean
@@ -81,7 +81,6 @@ interface CashRegister {
 
 const PAGE_SIZE = 10
 
-const money = (value: number) => `$${value.toFixed(2)}`
 
 const formatDayLabel = (dateKey: string) =>
   format(new Date(`${dateKey}T12:00:00`), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })
@@ -160,6 +159,21 @@ export default function HistorialPage() {
     loadPage(1, true)
   }, [loadPage])
 
+  useEffect(() => {
+    if (!selectedDay) return
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setSelectedDay(null)
+      setDetailProduction([])
+      setDetailSales([])
+      setDetailCashRegister(null)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [selectedDay])
+
   const openDetail = async (day: HistoryDay) => {
     setSelectedDay(day)
     setDetailLoading(true)
@@ -218,7 +232,7 @@ export default function HistorialPage() {
     0
   )
   const detailExpected =
-    detailCashRegister?.expectedAmount ?? detailProductionTotal * COST_PER_PIECE
+    detailCashRegister?.expectedAmount ?? detailCashAmount
   const detailReported = detailCashRegister?.actualAmount ?? null
   const detailDifference = detailReported !== null ? detailReported - detailExpected : null
   const detailResult =
@@ -232,48 +246,37 @@ export default function HistorialPage() {
 
   if (loading) {
     return (
-      <div className="w-full max-w-full mx-auto px-4 md:max-w-2xl md:px-6">
+      <div className="page-stack">
         <div className="card text-center">
-          <p className="text-gray-600">Cargando...</p>
+          <p className="text-gray-600">Cargando…</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-full max-w-full mx-auto px-4 py-4 md:max-w-2xl md:px-6">
-      <header className="text-center mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2">Historial de días</h1>
-        <p className="text-gray-600 mb-4">Consulta de producción, ventas y cortes anteriores</p>
-        <div className="flex justify-center gap-4">
-          <Link href="/" className="btn btn-secondary text-sm py-2 px-4">
-            ← Producción
-          </Link>
-          <Link href="/venta" className="btn btn-secondary text-sm py-2 px-4">
-            Ventas
-          </Link>
-          <Link href="/corte" className="btn btn-secondary text-sm py-2 px-4">
-            Corte
-          </Link>
-          <Link href="/pedidos" className="btn btn-secondary text-sm py-2 px-4">
-            Pedidos
-          </Link>
-        </div>
-      </header>
+    <div className="page-stack">
+      <PageHeader
+        title="Días anteriores"
+        description="Producción, ventas y cortes guardados, día por día."
+      />
 
       {/* Modal detalle del día */}
       {selectedDay && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           onClick={closeDetail}
         >
           <div
-            className="card max-w-md w-full mb-0 max-h-[85vh] overflow-y-auto"
+            className="card max-h-[85vh] w-full max-w-md overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="detalle-dia-titulo"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h2 className="text-xl font-bold">Detalle del día</h2>
+                <h2 id="detalle-dia-titulo" className="text-xl font-bold">Detalle del día</h2>
                 <p className="text-gray-600 text-sm first-letter:uppercase">
                   {formatDayLabel(selectedDay.dateKey)}
                 </p>
@@ -352,7 +355,7 @@ export default function HistorialPage() {
                           </div>
                           <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
                             <span className="text-sm font-semibold text-gray-700">Total</span>
-                            <span className="font-bold text-green-600">{money(saleTotal(sale))}</span>
+                            <span className="font-bold text-green-700">{money(saleTotal(sale))}</span>
                           </div>
                         </div>
                       ))}
@@ -371,7 +374,7 @@ export default function HistorialPage() {
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600">Total vendido</span>
-                          <span className="font-bold text-green-600">{money(detailSoldAmount)}</span>
+                          <span className="font-bold text-green-700">{money(detailSoldAmount)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600">Ventas registradas</span>
@@ -450,8 +453,9 @@ export default function HistorialPage() {
         <h2 className="text-lg font-bold mb-3">Filtrar por fecha</h2>
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
-            <label className="block text-gray-600 mb-1 text-sm font-medium">Desde</label>
+            <label htmlFor="desde" className="block text-gray-600 mb-1 text-sm font-medium">Desde</label>
             <input
+              id="desde"
               type="date"
               className="input"
               value={from}
@@ -460,8 +464,9 @@ export default function HistorialPage() {
             />
           </div>
           <div className="flex-1">
-            <label className="block text-gray-600 mb-1 text-sm font-medium">Hasta</label>
+            <label htmlFor="hasta" className="block text-gray-600 mb-1 text-sm font-medium">Hasta</label>
             <input
+              id="hasta"
               type="date"
               className="input"
               value={to}
@@ -480,7 +485,7 @@ export default function HistorialPage() {
         </div>
       </form>
 
-      <p className="text-sm text-gray-500 mb-3">
+      <p className="text-sm text-gray-600">
         {total} {total === 1 ? 'día registrado' : 'días registrados'}
       </p>
 
@@ -492,23 +497,22 @@ export default function HistorialPage() {
       ) : (
         <div className="flex flex-col gap-4">
           {days.map((day) => (
-            <button
-              key={day.dateKey}
-              type="button"
-              onClick={() => openDetail(day)}
-              aria-haspopup="dialog"
-              className="card mb-0 w-full text-left hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
-            >
-              <div className="flex justify-between items-center mb-4">
+            <article key={day.dateKey} className="card">
+              <div className="flex items-start justify-between gap-3">
                 <h2 className="text-lg font-bold first-letter:uppercase">
                   {formatDayLabel(day.dateKey)}
                 </h2>
-                <span className="text-2xl text-gray-400" aria-hidden="true">
-                  ›
-                </span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-compact"
+                  onClick={() => openDetail(day)}
+                  aria-haspopup="dialog"
+                >
+                  Ver detalle
+                </button>
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="mt-4 flex flex-col gap-3">
                 {/* Producción */}
                 <div className="rounded-lg bg-gray-50 p-3">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
@@ -556,7 +560,7 @@ export default function HistorialPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600 text-sm">Monto vendido</span>
-                        <span className="font-bold text-green-600">{money(day.sales.amount)}</span>
+                        <span className="font-bold text-green-700">{money(day.sales.amount)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600 text-sm">Ventas registradas</span>
@@ -624,7 +628,7 @@ export default function HistorialPage() {
                   )}
                 </div>
               </div>
-            </button>
+            </article>
           ))}
         </div>
       )}
