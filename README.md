@@ -1,4 +1,4 @@
-# Sales Tracker - Control de Ventas
+# Tamales Lupita - Control diario
 
 Aplicación web para control de ventas diarias de un negocio de comida. Registra la producción del día, las ventas por producto y el corte de caja.
 
@@ -7,8 +7,8 @@ Aplicación web para control de ventas diarias de un negocio de comida. Registra
 - Diseño mobile-first
 - Registro de producción diaria por variedad (incrementos o total)
 - Registro de ventas por producto
-- Corte de caja con comparación de monto esperado vs. real
-- Cálculo automático del monto esperado (producción × costo por pieza)
+- Corte de caja con comparación de efectivo esperado vs. real
+- Efectivo esperado calculado a partir de ventas y anticipos cobrados en efectivo
 
 ## Tecnologías
 
@@ -55,6 +55,12 @@ Abrir [http://localhost:3000](http://localhost:3000).
 
 ## Despliegue
 
-El despliegue se hace en Vercel. Las variables `DATABASE_URL` y `DIRECT_URL` de
-producción se configuran en el dashboard de Vercel, no en el repositorio. El
-detalle está en `DATABASE_SETUP.md`.
+La URL fija de producción es **https://tamales-lupita.vercel.app**.
+
+Cada push a `main` genera un nuevo deployment de producción y Vercel lo publica
+en ese dominio. Las URLs con hash que aparecen en el dashboard son deployments
+individuales; no deben usarse como enlace permanente.
+
+Las variables `DATABASE_URL` y `DIRECT_URL` de producción se configuran en el
+dashboard de Vercel, no en el repositorio. El detalle está en
+`DATABASE_SETUP.md`.
